@@ -1,0 +1,9 @@
+[Unit]
+Description=Sidewinder daemon
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/sidewinderd
+
+[Install]
+WantedBy=multi-user.target
