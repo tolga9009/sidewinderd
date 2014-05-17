@@ -8,10 +8,6 @@
  * guys, I wouldn't be able to do anything.
  */
 
-/*
- * LICENSE!
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <libusb-1.0/libusb.h>
@@ -102,6 +98,10 @@ void sidewinder_init(struct sidewinder_data *sw) {
 void sidewinder_control(struct sidewinder_data *sw, uint8_t *request) {
 	libusb_control_transfer(sw->handle, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE | LIBUSB_ENDPOINT_OUT,
 			LIBUSB_REQUEST_SET_CONFIGURATION, 0x307, 0x1, request, 0x2, 0);
+}
+
+void sidewinder_get_status(struct sidewinder_data *sw) {
+	libusb_control_transfer(sw->handle, 0xA1, 0x1, 0x307, 1, sw->status, 0x2, 0);
 }
 
 void sidewinder_switch_profile(struct sidewinder_data *sw) {
