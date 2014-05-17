@@ -10,6 +10,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <linux/types.h>
+#include <linux/uhid.h>
 #include <libusb-1.0/libusb.h>
 
 #define VENDOR_ID_MICROSOFT			0x045e
@@ -23,6 +26,8 @@ struct sidewinder_data {
 	uint8_t profile;
 	uint8_t status;
 };
+
+volatile uint8_t active = 1;
 
 int is_sidewinder(libusb_device *dev)
 {
@@ -101,7 +106,7 @@ void sidewinder_control(struct sidewinder_data *sw, uint8_t *request) {
 }
 
 void sidewinder_get_status(struct sidewinder_data *sw) {
-	libusb_control_transfer(sw->handle, 0xA1, 0x1, 0x307, 1, sw->status, 0x2, 0);
+	libusb_control_transfer(sw->handle, 0xA1, 0x1, 0x307, 1, &sw->status, 0x2, 0);
 }
 
 void sidewinder_switch_profile(struct sidewinder_data *sw) {
@@ -132,16 +137,26 @@ void sidewinder_exit(struct sidewinder_data *sw) {
 	free(sw);
 }
 
+void catcher(int sig) {
+	active = 0;
+}
+
 int main(int argc, char **argv) {
 	struct sidewinder_data *sw;
 	sw = calloc(4, sizeof(struct sidewinder_data));
 
+	signal(SIGINT, catcher);
+	signal(SIGHUP, catcher);
+	signal(SIGTERM, catcher);
+	signal(SIGKILL, catcher);
+
 	sidewinder_init(sw);
-/*
-	while (1) {
-		libusb_handle_events_completed(sw->context, completed);
+
+	while (active) {
+		int completed;
+		libusb_handle_events_completed(sw->context, &completed);
 	}
-*/
+
 	sidewinder_exit(sw);
 
 	exit(0);
