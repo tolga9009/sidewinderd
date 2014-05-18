@@ -167,10 +167,48 @@ void process_input(uint8_t nbytes, unsigned char *buffer) {
 	if (nbytes == 5 && buffer[0] == 8) {
 		int i;
 
-		for (i = 0; i < nbytes; i++) {
-			printf("%2x ", buffer[i]);
+		/* cutting off buffer[0] */
+		for (i = 1; i < nbytes; i++) {
+			uint32_t key;
+
+			if (buffer[i]) {
+				key = buffer[i] << (8 * (i - 1));
+
+				/* TODO: recognize multi-keypresses with bitwise-AND operator */
+				switch(key) {
+					case SKEY_S01: printf("S1 pressed\n");	break;
+					case SKEY_S02: printf("S2 pressed\n");	break;
+					case SKEY_S03: printf("S3 pressed\n");	break;
+					case SKEY_S04: printf("S4 pressed\n");	break;
+					case SKEY_S05: printf("S5 pressed\n");	break;
+					case SKEY_S06: printf("S6 pressed\n");	break;
+					case SKEY_S07: printf("S7 pressed\n");	break;
+					case SKEY_S08: printf("S8 pressed\n");	break;
+					case SKEY_S09: printf("S9 pressed\n");	break;
+					case SKEY_S10: printf("S10 pressed\n");	break;
+					case SKEY_S11: printf("S11 pressed\n");	break;
+					case SKEY_S12: printf("S12 pressed\n");	break;
+					case SKEY_S13: printf("S13 pressed\n");	break;
+					case SKEY_S14: printf("S14 pressed\n");	break;
+					case SKEY_S15: printf("S15 pressed\n");	break;
+					case SKEY_S16: printf("S16 pressed\n");	break;
+					case SKEY_S17: printf("S17 pressed\n");	break;
+					case SKEY_S18: printf("S18 pressed\n");	break;
+					case SKEY_S19: printf("S19 pressed\n");	break;
+					case SKEY_S20: printf("S20 pressed\n");	break;
+					case SKEY_S21: printf("S21 pressed\n");	break;
+					case SKEY_S22: printf("S22 pressed\n");	break;
+					case SKEY_S23: printf("S23 pressed\n");	break;
+					case SKEY_S24: printf("S24 pressed\n");	break;
+					case SKEY_S25: printf("S25 pressed\n");	break;
+					case SKEY_S26: printf("S26 pressed\n");	break;
+					case SKEY_S27: printf("S27 pressed\n");	break;
+					case SKEY_S28: printf("S28 pressed\n");	break;
+					case SKEY_S29: printf("S29 pressed\n");	break;
+					case SKEY_S30: printf("S30 pressed\n");	break;
+				}
+			}
 		}
-		puts("\n");
 	} else if (nbytes = 8) {
 		
 	}
