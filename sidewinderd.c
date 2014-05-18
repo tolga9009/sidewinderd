@@ -78,6 +78,7 @@
 volatile uint8_t active = 1;
 
 /* sidewinder device status */
+/* TODO: make this struct globally available */
 struct sidewinder_data {
 	uint8_t device_id;
 	uint8_t profile;
@@ -85,14 +86,6 @@ struct sidewinder_data {
 	int32_t file_desc;
 	const char *device_node;
 };
-
-void switch_profile(struct sidewinder_data *sw) {
-	sw->profile++;
-
-	if (sw->profile > MAX_PROFILE) {
-		sw->profile = MIN_PROFILE;
-	}
-}
 
 void cleanup(struct sidewinder_data *sw) {
 	close(sw->file_desc);
@@ -167,7 +160,29 @@ void setup_hidraw(struct sidewinder_data *sw) {
 	}
 }
 
-void process_input(uint8_t nbytes, unsigned char *buffer) {
+void feature_request(struct sidewinder_data *sw, uint8_t request) {
+	unsigned char buffer[2];
+
+	/* buffer[0] is Report Number, buffer[1] is the control byte */
+	buffer[0] = 0x7;
+	buffer[1] = request;
+	ioctl(sw->file_desc, HIDIOCSFEATURE(2), buffer);
+}
+
+void switch_profile(struct sidewinder_data *sw) {
+	uint8_t status;
+	sw->profile++;
+
+	if (sw->profile > MAX_PROFILE) {
+		sw->profile = MIN_PROFILE;
+	}
+
+	status = 0x04 << sw->profile;
+
+	feature_request(sw, status);
+}
+
+void process_input(struct sidewinder_data *sw, uint8_t nbytes, unsigned char *buffer) {
 	if (nbytes == 5 && buffer[0] == 8) {
 		int i;
 
@@ -221,11 +236,12 @@ void process_input(uint8_t nbytes, unsigned char *buffer) {
 		switch(key) {
 			case SKEY_GAMECENTER: printf("Game Center pressed\n");	break;
 			case SKEY_RECORD: printf("Record pressed\n");			break;
-			case SKEY_PROFILE: printf("Profile switch pressed\n");	break;
+			case SKEY_PROFILE: switch_profile(sw);					break;
 		}
 	}
 }
 
+/* THINK_ABOUT: move to mainloop!? */
 void listen_device(struct sidewinder_data *sw) {
 	uint8_t nbytes;
 	unsigned char buffer[8];
@@ -233,7 +249,7 @@ void listen_device(struct sidewinder_data *sw) {
 	nbytes = read(sw->file_desc, buffer, 8);
 
 	if (nbytes > 0) {
-		process_input(nbytes, buffer);
+		process_input(sw, nbytes, buffer);
 	}
 }
 
@@ -248,6 +264,10 @@ int main(int argc, char **argv) {
 
 	setup_udev(sw);
 	setup_hidraw(sw);
+
+	/* setting initial profile */
+	sw->profile = 0;
+	feature_request(sw, 0x4 << sw->profile);
 
 	while (active) {
 		listen_device(sw);
