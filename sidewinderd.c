@@ -59,6 +59,7 @@ void switch_profile(struct sidewinder_data *sw) {
 }
 
 void cleanup(struct sidewinder_data *sw) {
+	close(sw->file_desc);
 	free(sw);
 }
 
@@ -135,12 +136,36 @@ int main(int argc, char **argv) {
 
 	setup_udev(sw);
 
+	int i, res, desc_size = 0;
+	char buf[256];
+	struct hidraw_report_descriptor *rpt_desc;
+	struct hidraw_devinfo *info;
+
+	sw->file_desc = open(sw->device_node, O_RDWR|O_NONBLOCK);
+
+	if (sw->file_desc < 0) {
+		printf("Can't open device");
+		exit(1);
+	}
+
+	rpt_desc = calloc(2, sizeof(struct hidraw_report_descriptor));
+	info = calloc(3, sizeof(struct hidraw_devinfo));
+
 	/* TODO: main loop - watching over the device with hidraw */
 	while (active) {
-		
+		res = read(sw->file_desc, buf, 16);
+		if (res < 0) {
+		} else {
+			printf("read() read %d bytes:\n\t", res);
+			for (i = 0; i < res; i++)
+				printf("%hhx ", buf[i]);
+			puts("\n");
+		}
 	}
 
 	cleanup(sw);
+	free(info);
+	free(rpt_desc);
 
 	exit(0);
 }
