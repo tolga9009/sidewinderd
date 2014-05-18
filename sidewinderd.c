@@ -31,12 +31,20 @@
 #define PRODUCT_ID_SIDEWINDER_X4	0x0768
 
 /* device list */
-#define DEVICE_SIDEWINDER_X6		0x00
-#define DEVICE_SIDEWINDER_X4		0x01
+#define DEVICE_SIDEWINDER_X6	0x00
+#define DEVICE_SIDEWINDER_X4	0x01
 
 /* constants */
-#define MIN_PROFILE 0
-#define MAX_PROFILE 2
+#define MIN_PROFILE	0
+#define MAX_PROFILE	2
+
+/* special keys */
+#define SKEY_S01	0x01
+#define SKEY_S02	0x02
+#define SKEY_S03	0x03
+#define SKEY_S04	0x04
+#define SKEY_S05	0x05
+#define SKEY_S06	0x06
 
 /* global variables */
 volatile uint8_t active = 1;
@@ -74,9 +82,7 @@ void setup_udev(struct sidewinder_data *sw) {
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *devices, *dev_list_entry;
 
-	char vid_microsoft[4];
-	char pid_sidewinder_x6[4];
-	char pid_sidewinder_x4[4];
+	char vid_microsoft[4], pid_sidewinder_x6[4], pid_sidewinder_x4[4];
 
 	/* converting integers to strings */
 	snprintf(vid_microsoft, sizeof(vid_microsoft) + 1, "%04x", VENDOR_ID_MICROSOFT);
@@ -95,8 +101,7 @@ void setup_udev(struct sidewinder_data *sw) {
 	devices = udev_enumerate_get_list_entry(enumerate);
 
 	udev_list_entry_foreach(dev_list_entry, devices) {
-		const char *path;
-		const char *temp_path;
+		const char *path, *temp_path;
 
 		path = udev_list_entry_get_name(dev_list_entry);
 		dev = udev_device_new_from_syspath(udev, path);
@@ -125,33 +130,19 @@ void setup_udev(struct sidewinder_data *sw) {
 	udev_unref(udev);
 }
 
-int main(int argc, char **argv) {
-	struct sidewinder_data *sw;
-	sw = calloc(4, sizeof(struct sidewinder_data));
-
-	signal(SIGINT, handler);
-	signal(SIGHUP, handler);
-	signal(SIGTERM, handler);
-	signal(SIGKILL, handler);
-
-	setup_udev(sw);
-
-	int i, res, desc_size = 0;
-	char buf[256];
-	struct hidraw_report_descriptor *rpt_desc;
-	struct hidraw_devinfo *info;
-
+void setup_hidraw(struct sidewinder_data *sw) {
 	sw->file_desc = open(sw->device_node, O_RDWR|O_NONBLOCK);
 
 	if (sw->file_desc < 0) {
-		printf("Can't open device");
+		printf("Can't open hidraw interface");
 		exit(1);
 	}
+}
 
-	rpt_desc = calloc(2, sizeof(struct hidraw_report_descriptor));
-	info = calloc(3, sizeof(struct hidraw_devinfo));
+void listen_device(struct sidewinder_data *sw) {
+	int i, res, desc_size = 0;
+	char buf[256];
 
-	/* TODO: main loop - watching over the device with hidraw */
 	while (active) {
 		res = read(sw->file_desc, buf, 16);
 		if (res < 0) {
@@ -163,9 +154,26 @@ int main(int argc, char **argv) {
 		}
 	}
 
+}
+
+int main(int argc, char **argv) {
+	struct sidewinder_data *sw;
+	sw = calloc(4, sizeof(struct sidewinder_data));
+
+	signal(SIGINT, handler);
+	signal(SIGHUP, handler);
+	signal(SIGTERM, handler);
+	signal(SIGKILL, handler);
+
+	setup_udev(sw);
+	setup_hidraw(sw);
+
+	/* TODO: main loop - watching over the device with hidraw */
+	while (active) {
+		listen_device(sw);
+	}
+
 	cleanup(sw);
-	free(info);
-	free(rpt_desc);
 
 	exit(0);
 }
