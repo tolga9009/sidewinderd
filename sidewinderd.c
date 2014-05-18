@@ -41,10 +41,34 @@
 /* special keys */
 #define SKEY_S01	0x01
 #define SKEY_S02	0x02
-#define SKEY_S03	0x03
-#define SKEY_S04	0x04
-#define SKEY_S05	0x05
-#define SKEY_S06	0x06
+#define SKEY_S03	0x04
+#define SKEY_S04	0x08
+#define SKEY_S05	0x10
+#define SKEY_S06	0x20
+#define SKEY_S07	0x40
+#define SKEY_S08	0x80
+#define SKEY_S09	0x01 << 8
+#define SKEY_S10	0x02 << 8
+#define SKEY_S11	0x04 << 8
+#define SKEY_S12	0x08 << 8
+#define SKEY_S13	0x10 << 8
+#define SKEY_S14	0x20 << 8
+#define SKEY_S15	0x40 << 8
+#define SKEY_S16	0x80 << 8
+#define SKEY_S17	0x01 << 16
+#define SKEY_S18	0x02 << 16
+#define SKEY_S19	0x04 << 16
+#define SKEY_S20	0x08 << 16
+#define SKEY_S21	0x10 << 16
+#define SKEY_S22	0x20 << 16
+#define SKEY_S23	0x40 << 16
+#define SKEY_S24	0x80 << 16
+#define SKEY_S25	0x01 << 24
+#define SKEY_S26	0x02 << 24
+#define SKEY_S27	0x04 << 24
+#define SKEY_S28	0x08 << 24
+#define SKEY_S29	0x10 << 24
+#define SKEY_S30	0x20 << 24
 
 /* global variables */
 volatile uint8_t active = 1;
@@ -139,18 +163,28 @@ void setup_hidraw(struct sidewinder_data *sw) {
 	}
 }
 
-void listen_device(struct sidewinder_data *sw) {
-	int i, result = 0;
-	char buffer[8];
+void process_input(uint8_t nbytes, unsigned char *buffer) {
+	if (nbytes == 5 && buffer[0] == 8) {
+		int i;
 
-	result = read(sw->file_desc, buffer, 8);
-
-	if (result > 0) {
-		printf("read() read %d bytes:\n\t", result);
-
-		for (i = 0; i < result; i++)
-			printf("%hhx ", buffer[i]);
+		for (i = 0; i < nbytes; i++) {
+			printf("%2x ", buffer[i]);
+		}
 		puts("\n");
+	} else if (nbytes = 8) {
+		
+	}
+}
+
+void listen_device(struct sidewinder_data *sw) {
+	uint8_t nbytes;
+	unsigned char buffer[8];
+	int i;
+
+	nbytes = read(sw->file_desc, buffer, 8);
+
+	if (nbytes > 0) {
+		process_input(nbytes, buffer);
 	}
 }
 
