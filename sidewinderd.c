@@ -143,17 +143,15 @@ void listen_device(struct sidewinder_data *sw) {
 	int i, result = 0;
 	char buffer[8];
 
-	while (active) {
-		result = read(sw->file_desc, buffer, 8);
-		if (result > 0) {
-			printf("read() read %d bytes:\n\t", result);
+	result = read(sw->file_desc, buffer, 8);
 
-			for (i = 0; i < result; i++)
-				printf("%hhx ", buffer[i]);
-			puts("\n");
-		}
+	if (result > 0) {
+		printf("read() read %d bytes:\n\t", result);
+
+		for (i = 0; i < result; i++)
+			printf("%hhx ", buffer[i]);
+		puts("\n");
 	}
-
 }
 
 int main(int argc, char **argv) {
@@ -170,6 +168,7 @@ int main(int argc, char **argv) {
 
 	while (active) {
 		listen_device(sw);
+		usleep(1);
 	}
 
 	cleanup(sw);
