@@ -1,5 +1,5 @@
 CC = gcc
-CXXFLAGS = -Wall
+CXXFLAGS = -Wall -Wextra
 LDFLAGS = -ludev
 INCLUDES =
 

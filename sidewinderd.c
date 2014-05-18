@@ -140,16 +140,16 @@ void setup_hidraw(struct sidewinder_data *sw) {
 }
 
 void listen_device(struct sidewinder_data *sw) {
-	int i, res, desc_size = 0;
-	char buf[256];
+	int i, result = 0;
+	char buffer[8];
 
 	while (active) {
-		res = read(sw->file_desc, buf, 16);
-		if (res < 0) {
-		} else {
-			printf("read() read %d bytes:\n\t", res);
-			for (i = 0; i < res; i++)
-				printf("%hhx ", buf[i]);
+		result = read(sw->file_desc, buffer, 8);
+		if (result > 0) {
+			printf("read() read %d bytes:\n\t", result);
+
+			for (i = 0; i < result; i++)
+				printf("%hhx ", buffer[i]);
 			puts("\n");
 		}
 	}
@@ -168,7 +168,6 @@ int main(int argc, char **argv) {
 	setup_udev(sw);
 	setup_hidraw(sw);
 
-	/* TODO: main loop - watching over the device with hidraw */
 	while (active) {
 		listen_device(sw);
 	}
