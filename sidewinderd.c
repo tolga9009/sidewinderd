@@ -70,6 +70,10 @@
 #define SKEY_S29	0x10 << 24
 #define SKEY_S30	0x20 << 24
 
+#define SKEY_GAMECENTER		0x10
+#define SKEY_RECORD			0x11
+#define SKEY_PROFILE		0x14
+
 /* global variables */
 volatile uint8_t active = 1;
 
@@ -209,15 +213,22 @@ void process_input(uint8_t nbytes, unsigned char *buffer) {
 				}
 			}
 		}
-	} else if (nbytes = 8) {
-		
+	} else if (nbytes == 8 && buffer[0] == 1) {
+		int i;
+		uint32_t key;
+		key = buffer[6];
+
+		switch(key) {
+			case SKEY_GAMECENTER: printf("Game Center pressed\n");	break;
+			case SKEY_RECORD: printf("Record pressed\n");			break;
+			case SKEY_PROFILE: printf("Profile switch pressed\n");	break;
+		}
 	}
 }
 
 void listen_device(struct sidewinder_data *sw) {
 	uint8_t nbytes;
 	unsigned char buffer[8];
-	int i;
 
 	nbytes = read(sw->file_desc, buffer, 8);
 
