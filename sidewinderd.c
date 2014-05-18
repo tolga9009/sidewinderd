@@ -73,12 +73,14 @@ void setup_udev(struct sidewinder_data *sw) {
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *devices, *dev_list_entry;
 
-	char vendor_id[4];
-	char x4_id[4];
-	char x6_id[4];
-	snprintf(vendor_id, sizeof(vendor_id) + 1, "%04x", VENDOR_ID_MICROSOFT);
-	snprintf(x4_id, sizeof(x4_id) + 1, "%04x", PRODUCT_ID_SIDEWINDER_X4);
-	snprintf(x6_id, sizeof(x6_id) + 1, "%04x", PRODUCT_ID_SIDEWINDER_X6);
+	char vid_microsoft[4];
+	char pid_sidewinder_x6[4];
+	char pid_sidewinder_x4[4];
+
+	/* converting integers to strings */
+	snprintf(vid_microsoft, sizeof(vid_microsoft) + 1, "%04x", VENDOR_ID_MICROSOFT);
+	snprintf(pid_sidewinder_x6, sizeof(pid_sidewinder_x6) + 1, "%04x", PRODUCT_ID_SIDEWINDER_X6);
+	snprintf(pid_sidewinder_x4, sizeof(pid_sidewinder_x4) + 1, "%04x", PRODUCT_ID_SIDEWINDER_X4);
 
 	udev = udev_new();
 	if (!udev) {
@@ -103,11 +105,11 @@ void setup_udev(struct sidewinder_data *sw) {
 		if (strcmp(udev_device_get_sysattr_value(dev, "bInterfaceNumber"), "01") == 0) {
 			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
 
-			if (strcmp(udev_device_get_sysattr_value(dev, "idVendor"), vendor_id) == 0) {
-				if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), x6_id) == 0) {
+			if (strcmp(udev_device_get_sysattr_value(dev, "idVendor"), vid_microsoft) == 0) {
+				if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x6) == 0) {
 					sw->device_node = temp_path;
 					sw->device_id = DEVICE_SIDEWINDER_X6;
-				} else if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), x4_id) == 0) {
+				} else if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x4) == 0) {
 					sw->device_node = temp_path;
 					sw->device_id = DEVICE_SIDEWINDER_X4;
 				}
@@ -139,8 +141,6 @@ int main(int argc, char **argv) {
 	}
 
 	cleanup(sw);
-
-	//printf("%s\n", sw->device_path);
 
 	exit(0);
 }
