@@ -15,13 +15,13 @@
 #include <string.h>
 #include <signal.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <libudev.h>
 #include <locale.h>
 
 #include <linux/hidraw.h>
 #include <linux/input.h>
 
+#include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
@@ -31,48 +31,54 @@
 #define PRODUCT_ID_SIDEWINDER_X4	0x0768
 
 /* device list */
-#define DEVICE_SIDEWINDER_X6	0x00
-#define DEVICE_SIDEWINDER_X4	0x01
+#define DEVICE_SIDEWINDER_X6	0x01
+#define DEVICE_SIDEWINDER_X4	0x02
 
 /* constants */
+#define MAX_BUF		8
+#define SIZE_SKEYS	5
+#define SIZE_MKEYS	8
 #define MIN_PROFILE	0
 #define MAX_PROFILE	2
+#define SIDEWINDER_X6_MAX_SKEYS	30
+#define SIDEWINDER_X4_MAX_SKEYS	6
 
 /* special keys */
-#define SKEY_S01	0x01
-#define SKEY_S02	0x02
-#define SKEY_S03	0x04
-#define SKEY_S04	0x08
-#define SKEY_S05	0x10
-#define SKEY_S06	0x20
-#define SKEY_S07	0x40
-#define SKEY_S08	0x80
-#define SKEY_S09	0x01 << 8
-#define SKEY_S10	0x02 << 8
-#define SKEY_S11	0x04 << 8
-#define SKEY_S12	0x08 << 8
-#define SKEY_S13	0x10 << 8
-#define SKEY_S14	0x20 << 8
-#define SKEY_S15	0x40 << 8
-#define SKEY_S16	0x80 << 8
-#define SKEY_S17	0x01 << 16
-#define SKEY_S18	0x02 << 16
-#define SKEY_S19	0x04 << 16
-#define SKEY_S20	0x08 << 16
-#define SKEY_S21	0x10 << 16
-#define SKEY_S22	0x20 << 16
-#define SKEY_S23	0x40 << 16
-#define SKEY_S24	0x80 << 16
-#define SKEY_S25	0x01 << 24
-#define SKEY_S26	0x02 << 24
-#define SKEY_S27	0x04 << 24
-#define SKEY_S28	0x08 << 24
-#define SKEY_S29	0x10 << 24
-#define SKEY_S30	0x20 << 24
+#define SKEY_S01	0x1
+#define SKEY_S02	0x1 << 1
+#define SKEY_S03	0x1 << 2
+#define SKEY_S04	0x1 << 3
+#define SKEY_S05	0x1 << 4
+#define SKEY_S06	0x1 << 5
+#define SKEY_S07	0x1 << 6
+#define SKEY_S08	0x1 << 7
+#define SKEY_S09	0x1 << 8
+#define SKEY_S10	0x1 << 9
+#define SKEY_S11	0x1 << 10
+#define SKEY_S12	0x1 << 11
+#define SKEY_S13	0x1 << 12
+#define SKEY_S14	0x1 << 13
+#define SKEY_S15	0x1 << 14
+#define SKEY_S16	0x1 << 15
+#define SKEY_S17	0x1 << 16
+#define SKEY_S18	0x1 << 17
+#define SKEY_S19	0x1 << 18
+#define SKEY_S20	0x1 << 19
+#define SKEY_S21	0x1 << 20
+#define SKEY_S22	0x1 << 21
+#define SKEY_S23	0x1 << 22
+#define SKEY_S24	0x1 << 23
+#define SKEY_S25	0x1 << 24
+#define SKEY_S26	0x1 << 25
+#define SKEY_S27	0x1 << 26
+#define SKEY_S28	0x1 << 27
+#define SKEY_S29	0x1 << 28
+#define SKEY_S30	0x1 << 29
 
-#define SKEY_GAMECENTER		0x10
-#define SKEY_RECORD			0x11
-#define SKEY_PROFILE		0x14
+/* media keys */
+#define MKEY_GAMECENTER		0x10
+#define MKEY_RECORD			0x11
+#define MKEY_PROFILE		0x14
 
 /* global variables */
 volatile uint8_t active = 1;
@@ -83,12 +89,12 @@ struct sidewinder_data {
 	uint8_t device_id;
 	uint8_t profile;
 	uint8_t status;
-	int32_t file_desc;
+	int32_t fd;
 	const char *device_node;
 };
 
 void cleanup(struct sidewinder_data *sw) {
-	close(sw->file_desc);
+	close(sw->fd);
 	free(sw);
 }
 
@@ -152,21 +158,22 @@ void setup_udev(struct sidewinder_data *sw) {
 }
 
 void setup_hidraw(struct sidewinder_data *sw) {
-	sw->file_desc = open(sw->device_node, O_RDWR|O_NONBLOCK);
+	/* O_SYNC for write operation? */
+	sw->fd = open(sw->device_node, O_RDWR | O_NONBLOCK);
 
-	if (sw->file_desc < 0) {
+	if (sw->fd < 0) {
 		printf("Can't open hidraw interface");
 		exit(1);
 	}
 }
 
 void feature_request(struct sidewinder_data *sw, uint8_t request) {
-	unsigned char buffer[2];
+	unsigned char buf[2];
 
-	/* buffer[0] is Report Number, buffer[1] is the control byte */
-	buffer[0] = 0x7;
-	buffer[1] = request;
-	ioctl(sw->file_desc, HIDIOCSFEATURE(2), buffer);
+	/* buf[0] is Report Number, buf[1] is the control byte */
+	buf[0] = 0x7;
+	buf[1] = request;
+	ioctl(sw->fd, HIDIOCSFEATURE(2), buf);
 }
 
 void switch_profile(struct sidewinder_data *sw) {
@@ -182,80 +189,70 @@ void switch_profile(struct sidewinder_data *sw) {
 	feature_request(sw, status);
 }
 
-void process_input(struct sidewinder_data *sw, uint8_t nbytes, unsigned char *buffer) {
-	if (nbytes == 5 && buffer[0] == 8) {
+void send_key(uint32_t skey) {
+	printf("key pressed: %x\n", skey);
+}
+
+/* TODO: improve multiple inputs */
+void process_input(struct sidewinder_data *sw, uint8_t nbytes, unsigned char *buf) {
+	if (nbytes == SIZE_SKEYS && buf[0] == 8) {
 		int i;
 
-		/* cutting off buffer[0] */
+		/* cutting off buf[0] */
 		for (i = 1; i < nbytes; i++) {
 			uint32_t key;
 
-			if (buffer[i]) {
-				key = buffer[i] << (8 * (i - 1));
+			if (buf[i]) {
+				int j;
 
-				/* TODO: recognize multi-keypresses with bitwise-AND operator */
-				switch(key) {
-					case SKEY_S01: printf("S1 pressed\n");	break;
-					case SKEY_S02: printf("S2 pressed\n");	break;
-					case SKEY_S03: printf("S3 pressed\n");	break;
-					case SKEY_S04: printf("S4 pressed\n");	break;
-					case SKEY_S05: printf("S5 pressed\n");	break;
-					case SKEY_S06: printf("S6 pressed\n");	break;
-					case SKEY_S07: printf("S7 pressed\n");	break;
-					case SKEY_S08: printf("S8 pressed\n");	break;
-					case SKEY_S09: printf("S9 pressed\n");	break;
-					case SKEY_S10: printf("S10 pressed\n");	break;
-					case SKEY_S11: printf("S11 pressed\n");	break;
-					case SKEY_S12: printf("S12 pressed\n");	break;
-					case SKEY_S13: printf("S13 pressed\n");	break;
-					case SKEY_S14: printf("S14 pressed\n");	break;
-					case SKEY_S15: printf("S15 pressed\n");	break;
-					case SKEY_S16: printf("S16 pressed\n");	break;
-					case SKEY_S17: printf("S17 pressed\n");	break;
-					case SKEY_S18: printf("S18 pressed\n");	break;
-					case SKEY_S19: printf("S19 pressed\n");	break;
-					case SKEY_S20: printf("S20 pressed\n");	break;
-					case SKEY_S21: printf("S21 pressed\n");	break;
-					case SKEY_S22: printf("S22 pressed\n");	break;
-					case SKEY_S23: printf("S23 pressed\n");	break;
-					case SKEY_S24: printf("S24 pressed\n");	break;
-					case SKEY_S25: printf("S25 pressed\n");	break;
-					case SKEY_S26: printf("S26 pressed\n");	break;
-					case SKEY_S27: printf("S27 pressed\n");	break;
-					case SKEY_S28: printf("S28 pressed\n");	break;
-					case SKEY_S29: printf("S29 pressed\n");	break;
-					case SKEY_S30: printf("S30 pressed\n");	break;
+				key = buf[i] << (8 * (i - 1));
+
+				for (j = 0; j < SIDEWINDER_X4_MAX_SKEYS; j++) {
+					int skey = 1 << j;
+
+					if (key & skey) {
+						send_key(skey);
+					}
+				}
+
+				if (sw->device_id == DEVICE_SIDEWINDER_X6) {
+					for (j = SIDEWINDER_X4_MAX_SKEYS; j < SIDEWINDER_X6_MAX_SKEYS; j++) {
+						int skey = 1 << j;
+
+						if (key & skey) {
+							send_key(skey);
+						}
+					}
 				}
 			}
 		}
-	} else if (nbytes == 8 && buffer[0] == 1) {
+	/* TODO: use send_key() on keypress */
+	} else if (nbytes == SIZE_MKEYS && buf[0] == 1) {
 		int i;
 		uint32_t key;
-		key = buffer[6];
+		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
+		key = buf[6];
 
 		switch(key) {
-			case SKEY_GAMECENTER: printf("Game Center pressed\n");	break;
-			case SKEY_RECORD: printf("Record pressed\n");			break;
-			case SKEY_PROFILE: switch_profile(sw);					break;
+			case MKEY_GAMECENTER: printf("Game Center pressed\n");	break;
+			case MKEY_RECORD: printf("Record pressed\n");			break;
+			case MKEY_PROFILE: switch_profile(sw);					break;
 		}
-	}
-}
-
-/* THINK_ABOUT: move to mainloop!? */
-void listen_device(struct sidewinder_data *sw) {
-	uint8_t nbytes;
-	unsigned char buffer[8];
-
-	nbytes = read(sw->file_desc, buffer, 8);
-
-	if (nbytes > 0) {
-		process_input(sw, nbytes, buffer);
 	}
 }
 
 int main(int argc, char **argv) {
+	uint8_t nbytes;
+	uint32_t epfd;
+	unsigned char buf[MAX_BUF];
 	struct sidewinder_data *sw;
+	struct epoll_event ev;
+
 	sw = calloc(4, sizeof(struct sidewinder_data));
+	epfd = epoll_create1(0);
+	if (epfd == -1) {
+		error("epoll_create");
+	}
 
 	signal(SIGINT, handler);
 	signal(SIGHUP, handler);
@@ -269,9 +266,16 @@ int main(int argc, char **argv) {
 	sw->profile = 0;
 	feature_request(sw, 0x4 << sw->profile);
 
+	ev.data.fd = sw->fd;
+	ev.events = EPOLLIN;
+	epoll_ctl(epfd, EPOLL_CTL_ADD, sw->fd, &ev);
+
 	while (active) {
-		listen_device(sw);
-		usleep(1);
+		epoll_wait(epfd, &ev, 1, -1);
+
+		nbytes = read(sw->fd, buf, MAX_BUF);
+
+		process_input(sw, nbytes, buf);
 	}
 
 	cleanup(sw);
