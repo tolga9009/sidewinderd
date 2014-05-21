@@ -84,12 +84,9 @@
 /* global variables */
 volatile uint8_t active = 1;
 
-/* sidewinder device status */
-/* TODO: make this struct globally available */
 struct sidewinder_data {
 	uint8_t device_id;
 	uint8_t profile;
-	uint8_t status;
 	int32_t fd;
 	const char *device_node;
 } *sw;
@@ -169,20 +166,28 @@ void feature_request(uint8_t request) {
 	/* buf[0] is Report Number, buf[1] is the control byte */
 	buf[0] = 0x7;
 	buf[1] = request;
-	ioctl(sw->fd, HIDIOCSFEATURE(2), buf);
+	ioctl(sw->fd, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
 void switch_profile() {
-	uint8_t status;
+	uint8_t request;
+
 	sw->profile++;
 
 	if (sw->profile > MAX_PROFILE) {
 		sw->profile = MIN_PROFILE;
 	}
 
-	status = 0x04 << sw->profile;
+	request = 0x04 << sw->profile;
+	feature_request(request);
+}
 
-	feature_request(status);
+void init_device() {
+	uint8_t request;
+
+	sw->profile = 0;
+	request = 0x04 << sw->profile;
+	feature_request(request);
 }
 
 void send_key(uint32_t skey) {
@@ -245,9 +250,6 @@ int main(int argc, char **argv) {
 
 	sw = calloc(4, sizeof(struct sidewinder_data));
 	epfd = epoll_create1(0);
-	if (epfd == -1) {
-		error("epoll_create");
-	}
 
 	signal(SIGINT, handler);
 	signal(SIGHUP, handler);
@@ -257,14 +259,13 @@ int main(int argc, char **argv) {
 	setup_udev();
 	setup_hidraw();
 
-	/* setting initial profile */
-	sw->profile = 0;
-	feature_request(0x4 << sw->profile);
-
 	/* epoll setup */
 	ev.data.fd = sw->fd;
 	ev.events = EPOLLIN | EPOLLET;
 	epoll_ctl(epfd, EPOLL_CTL_ADD, sw->fd, &ev);
+
+	/* setting initial profile */
+	init_device();
 
 	while (active) {
 		epoll_wait(epfd, &ev, MAX_EVENTS, -1);
