@@ -38,6 +38,7 @@
 #define MAX_BUF		8
 #define SIZE_SKEYS	5
 #define SIZE_MKEYS	8
+#define MAX_EVENTS	1
 #define MIN_PROFILE	0
 #define MAX_PROFILE	2
 #define SIDEWINDER_X6_MAX_SKEYS	30
@@ -91,18 +92,13 @@ struct sidewinder_data {
 	uint8_t status;
 	int32_t fd;
 	const char *device_node;
-};
-
-void cleanup(struct sidewinder_data *sw) {
-	close(sw->fd);
-	free(sw);
-}
+} *sw;
 
 void handler() {
 	active = 0;
 }
 
-void setup_udev(struct sidewinder_data *sw) {
+void setup_udev() {
 	/* udev */
 	struct udev *udev;
 	struct udev_device *dev;
@@ -157,7 +153,7 @@ void setup_udev(struct sidewinder_data *sw) {
 	udev_unref(udev);
 }
 
-void setup_hidraw(struct sidewinder_data *sw) {
+void setup_hidraw() {
 	/* O_SYNC for write operation? */
 	sw->fd = open(sw->device_node, O_RDWR | O_NONBLOCK);
 
@@ -167,7 +163,7 @@ void setup_hidraw(struct sidewinder_data *sw) {
 	}
 }
 
-void feature_request(struct sidewinder_data *sw, uint8_t request) {
+void feature_request(uint8_t request) {
 	unsigned char buf[2];
 
 	/* buf[0] is Report Number, buf[1] is the control byte */
@@ -176,7 +172,7 @@ void feature_request(struct sidewinder_data *sw, uint8_t request) {
 	ioctl(sw->fd, HIDIOCSFEATURE(2), buf);
 }
 
-void switch_profile(struct sidewinder_data *sw) {
+void switch_profile() {
 	uint8_t status;
 	sw->profile++;
 
@@ -186,7 +182,7 @@ void switch_profile(struct sidewinder_data *sw) {
 
 	status = 0x04 << sw->profile;
 
-	feature_request(sw, status);
+	feature_request(status);
 }
 
 void send_key(uint32_t skey) {
@@ -194,7 +190,7 @@ void send_key(uint32_t skey) {
 }
 
 /* TODO: improve multiple inputs */
-void process_input(struct sidewinder_data *sw, uint8_t nbytes, unsigned char *buf) {
+void process_input(uint8_t nbytes, unsigned char *buf) {
 	if (nbytes == SIZE_SKEYS && buf[0] == 8) {
 		int i;
 
@@ -236,7 +232,7 @@ void process_input(struct sidewinder_data *sw, uint8_t nbytes, unsigned char *bu
 		switch(key) {
 			case MKEY_GAMECENTER: printf("Game Center pressed\n");	break;
 			case MKEY_RECORD: printf("Record pressed\n");			break;
-			case MKEY_PROFILE: switch_profile(sw);					break;
+			case MKEY_PROFILE: switch_profile();					break;
 		}
 	}
 }
@@ -245,7 +241,6 @@ int main(int argc, char **argv) {
 	uint8_t nbytes;
 	uint32_t epfd;
 	unsigned char buf[MAX_BUF];
-	struct sidewinder_data *sw;
 	struct epoll_event ev;
 
 	sw = calloc(4, sizeof(struct sidewinder_data));
@@ -259,26 +254,28 @@ int main(int argc, char **argv) {
 	signal(SIGTERM, handler);
 	signal(SIGKILL, handler);
 
-	setup_udev(sw);
-	setup_hidraw(sw);
+	setup_udev();
+	setup_hidraw();
 
 	/* setting initial profile */
 	sw->profile = 0;
-	feature_request(sw, 0x4 << sw->profile);
+	feature_request(0x4 << sw->profile);
 
+	/* epoll setup */
 	ev.data.fd = sw->fd;
-	ev.events = EPOLLIN;
+	ev.events = EPOLLIN | EPOLLET;
 	epoll_ctl(epfd, EPOLL_CTL_ADD, sw->fd, &ev);
 
 	while (active) {
-		epoll_wait(epfd, &ev, 1, -1);
-
+		epoll_wait(epfd, &ev, MAX_EVENTS, -1);
 		nbytes = read(sw->fd, buf, MAX_BUF);
-
-		process_input(sw, nbytes, buf);
+		process_input(nbytes, buf);
 	}
 
-	cleanup(sw);
+	/* cleanup */
+	close(epfd);
+	close(sw->fd);
+	free(sw);
 
 	exit(0);
 }
