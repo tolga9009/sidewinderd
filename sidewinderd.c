@@ -15,6 +15,7 @@
 #include <string.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <libconfig.h>
 #include <libudev.h>
 #include <locale.h>
 
@@ -82,10 +83,13 @@
 volatile uint8_t active = 1;
 int32_t fd, uifd, epfd;
 
+/* TODO: struct for special keys, including is_pressed and macro_path */
+/* TODO: macro player and xml parser */
+
 /* global structs */
-struct epoll_event *epev;
 struct uinput_user_dev *uidev;
 struct input_event *inev;
+struct epoll_event *epev;
 struct sidewinder_data {
 	uint16_t device_id;
 	uint8_t profile;
@@ -177,8 +181,11 @@ void setup_uidev() {
 		}
 	}
 
+	/* TODO: dynamically get needed keys by macro_player(), and set_keybit() */
 	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
-	ioctl(uifd, UI_SET_KEYBIT, KEY_D);
+	ioctl(uifd, UI_SET_KEYBIT, KEY_LEFTSHIFT);
+	ioctl(uifd, UI_SET_KEYBIT, KEY_T);
+	ioctl(uifd, UI_SET_KEYBIT, KEY_LEFTCTRL);
 	snprintf(uidev->name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
 	uidev->id.bustype = BUS_USB;
 	uidev->id.vendor = 0x1;
@@ -194,6 +201,85 @@ void setup_epoll() {
 	epev->data.fd = fd;
 	epev->events = EPOLLIN | EPOLLET;
 	epoll_ctl(epfd, EPOLL_CTL_ADD, fd, epev);
+}
+
+void setup_config() {
+	struct config_t *cfg;
+	struct config_setting_t *root, *group, *setting;
+	static const char *cfg_file = ".sidewinderd.conf";
+	int ret;
+	cfg = calloc(12, sizeof(struct config_t));
+
+	config_init(cfg);
+	root = config_root_setting(cfg);
+
+	/* default global settings */
+	setting = config_setting_add(root, "user", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "nobody");
+	setting = config_setting_add(root, "group", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "nobody");
+	setting = config_setting_add(root, "macro_path", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "/home/nobody/.sidewinderd/");
+	setting = config_setting_add(root, "default_profile", CONFIG_TYPE_INT);
+	config_setting_set_string(setting, "1");
+	setting = config_setting_add(root, "ms_compat_mode", CONFIG_TYPE_BOOL);
+	config_setting_set_string(setting, "false");
+
+	/* TODO: use for-loop */
+
+	/* profile 1 special keys */
+	group = config_setting_add(root, "profile_1", CONFIG_TYPE_GROUP);
+	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+
+	/* profile 2 special keys */
+	group = config_setting_add(root, "profile_2", CONFIG_TYPE_GROUP);
+	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+
+	/* profile 3 special keys */
+	group = config_setting_add(root, "profile_3", CONFIG_TYPE_GROUP);
+	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "unknown.mhm");
+
+	if (config_read_file(cfg, cfg_file) == CONFIG_FALSE) {
+		if (config_write_file(cfg, cfg_file) == CONFIG_FALSE) {
+			/* TODO: error handling */
+		}
+	}
+
+	config_destroy(cfg);
+	free(cfg);
 }
 
 void feature_request() {
@@ -229,14 +315,36 @@ void init_device() {
 	feature_request();
 }
 
+/* TODO: general design, for use with play_macro() */
+/* In this state, the function will open a terminal tab in GNOME 3.10 */
 void send_key(uint32_t skey) {
 	inev->type = EV_KEY;
-	inev->code = KEY_D;
+	inev->code = KEY_LEFTCTRL;
 	inev->value = 1;
 	write(uifd, inev, sizeof(struct input_event));
 
 	inev->type = EV_KEY;
-	inev->code = KEY_D;
+	inev->code = KEY_LEFTSHIFT;
+	inev->value = 1;
+	write(uifd, inev, sizeof(struct input_event));
+
+	inev->type = EV_KEY;
+	inev->code = KEY_T;
+	inev->value = 1;
+	write(uifd, inev, sizeof(struct input_event));
+
+	inev->type = EV_KEY;
+	inev->code = KEY_LEFTCTRL;
+	inev->value = 0;
+	write(uifd, inev, sizeof(struct input_event));
+
+	inev->type = EV_KEY;
+	inev->code = KEY_LEFTSHIFT;
+	inev->value = 0;
+	write(uifd, inev, sizeof(struct input_event));
+
+	inev->type = EV_KEY;
+	inev->code = KEY_T;
 	inev->value = 0;
 	write(uifd, inev, sizeof(struct input_event));
 
@@ -315,10 +423,11 @@ int main(int argc, char **argv) {
 	signal(SIGTERM, handler);
 	signal(SIGKILL, handler);
 
-	setup_udev();
-	setup_hidraw();
-	setup_uidev();
-	setup_epoll();
+	setup_udev();		/* get device node */
+	setup_hidraw();		/* setup hidraw interface */
+	setup_uidev();		/* sending input events */
+	setup_epoll();		/* watching hidraw device events */
+	setup_config();		/* parsing config files */
 
 	/* setting initial profile */
 	init_device();

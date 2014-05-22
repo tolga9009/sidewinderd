@@ -1,6 +1,6 @@
 CC = gcc
 CXXFLAGS = -Wall -Wextra
-LDFLAGS = -ludev
+LDFLAGS = -ludev -lconfig
 INCLUDES =
 
 HDRS =
