@@ -105,7 +105,6 @@ void setup_udev() {
 	struct udev_device *dev;
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *devices, *dev_list_entry;
-
 	char vid_microsoft[4], pid_sidewinder_x6[4], pid_sidewinder_x4[4];
 
 	/* converting integers to strings */
@@ -114,6 +113,7 @@ void setup_udev() {
 	snprintf(pid_sidewinder_x4, sizeof(pid_sidewinder_x4) + 1, "%04x", PRODUCT_ID_SIDEWINDER_X4);
 
 	udev = udev_new();
+
 	if (!udev) {
 		printf("Can't create udev\n");
 		exit(1);
@@ -167,6 +167,16 @@ void setup_uidev() {
 	uidev = calloc(7, sizeof(struct uinput_user_dev));
 	inev = calloc(3, sizeof(struct input_event));
 	uifd = open("/dev/uinput", O_WRONLY);
+
+	if (uifd < 0) {
+		uifd = open("/dev/input/uinput", O_WRONLY);
+
+		if (uifd < 0) {
+			printf("Can't open uinput");
+			exit(1);
+		}
+	}
+
 	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
 	ioctl(uifd, UI_SET_KEYBIT, KEY_D);
 	snprintf(uidev->name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
