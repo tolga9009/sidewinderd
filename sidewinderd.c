@@ -31,10 +31,6 @@
 #define PRODUCT_ID_SIDEWINDER_X6	0x074b
 #define PRODUCT_ID_SIDEWINDER_X4	0x0768
 
-/* device list */
-#define DEVICE_SIDEWINDER_X6	0x01
-#define DEVICE_SIDEWINDER_X4	0x02
-
 /* constants */
 #define MAX_BUF		8
 #define SIZE_SKEYS	5
@@ -84,13 +80,18 @@
 
 /* global variables */
 volatile uint8_t active = 1;
+int32_t fd, uifd, epfd;
 
 /* global structs */
+struct epoll_event *epev;
+struct uinput_user_dev *uidev;
+struct input_event *inev;
 struct sidewinder_data {
-	uint8_t device_id;
+	uint16_t device_id;
 	uint8_t profile;
-	int32_t fd;
-	int32_t uifd;
+	uint8_t auto_led;
+	uint8_t record_led;
+	uint8_t macropad;
 	const char *device_node;
 } *sw;
 
@@ -137,10 +138,10 @@ void setup_udev() {
 			if (strcmp(udev_device_get_sysattr_value(dev, "idVendor"), vid_microsoft) == 0) {
 				if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x6) == 0) {
 					sw->device_node = temp_path;
-					sw->device_id = DEVICE_SIDEWINDER_X6;
+					sw->device_id = PRODUCT_ID_SIDEWINDER_X6;
 				} else if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x4) == 0) {
 					sw->device_node = temp_path;
-					sw->device_id = DEVICE_SIDEWINDER_X4;
+					sw->device_id = PRODUCT_ID_SIDEWINDER_X4;
 				}
 			}
 		}
@@ -154,64 +155,85 @@ void setup_udev() {
 }
 
 void setup_hidraw() {
-	/* O_SYNC for write operation? */
-	sw->fd = open(sw->device_node, O_RDWR | O_NONBLOCK);
+	fd = open(sw->device_node, O_RDWR | O_NONBLOCK);
 
-	if (sw->fd < 0) {
+	if (fd < 0) {
 		printf("Can't open hidraw interface");
 		exit(1);
 	}
 }
 
-void feature_request(uint8_t request) {
+void setup_uidev() {
+	uidev = calloc(7, sizeof(struct uinput_user_dev));
+	inev = calloc(3, sizeof(struct input_event));
+	uifd = open("/dev/uinput", O_WRONLY);
+	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
+	ioctl(uifd, UI_SET_KEYBIT, KEY_D);
+	snprintf(uidev->name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
+	uidev->id.bustype = BUS_USB;
+	uidev->id.vendor = 0x1;
+	uidev->id.product = 0x1;
+	uidev->id.version = 1;
+	write(uifd, uidev, sizeof(struct uinput_user_dev));
+	ioctl(uifd, UI_DEV_CREATE);
+}
+
+void setup_epoll() {
+	epev = calloc(2, sizeof(struct epoll_event));
+	epfd = epoll_create1(0);
+	epev->data.fd = fd;
+	epev->events = EPOLLIN | EPOLLET;
+	epoll_ctl(epfd, EPOLL_CTL_ADD, fd, epev);
+}
+
+void feature_request() {
 	unsigned char buf[2];
 
 	/* buf[0] is Report Number, buf[1] is the control byte */
 	buf[0] = 0x7;
-	buf[1] = request;
-	ioctl(sw->fd, HIDIOCSFEATURE(sizeof(buf)), buf);
+	buf[1] = 0x04 << sw->profile;
+	buf[1] |= sw->macropad;
+	ioctl(fd, HIDIOCSFEATURE(sizeof(buf)), buf);
+}
+
+void toggle_macropad() {
+	sw->macropad ^= 1;
+	feature_request();
 }
 
 void switch_profile() {
-	uint8_t request;
-
 	sw->profile++;
 
 	if (sw->profile > MAX_PROFILE) {
 		sw->profile = MIN_PROFILE;
 	}
 
-	request = 0x04 << sw->profile;
-	feature_request(request);
+	feature_request();
 }
 
 void init_device() {
-	uint8_t request;
-
 	sw->profile = 0;
-	request = 0x04 << sw->profile;
-	feature_request(request);
+	sw->auto_led = 0;
+	sw->record_led = 0;
+	sw->macropad = 0;
+	feature_request();
 }
 
 void send_key(uint32_t skey) {
-	struct input_event *ev;
+	inev->type = EV_KEY;
+	inev->code = KEY_D;
+	inev->value = 1;
+	write(uifd, inev, sizeof(struct input_event));
 
-	ev = calloc(3, sizeof(ev));
-	ev->type = EV_KEY;
-	ev->code = KEY_D;
-	ev->value = 1;
-	write(sw->uifd, ev, sizeof(struct input_event));
+	inev->type = EV_KEY;
+	inev->code = KEY_D;
+	inev->value = 0;
+	write(uifd, inev, sizeof(struct input_event));
 
-
-	ev->type = EV_KEY;
-	ev->code = KEY_D;
-	ev->value = 0;
-	write(sw->uifd, ev, sizeof(struct input_event));
-
-	ev->type = EV_SYN;
-	ev->code = 0;
-	ev->value = 0;
-	write(sw->uifd, ev, sizeof(struct input_event));
+	inev->type = EV_SYN;
+	inev->code = 0;
+	inev->value = 0;
+	write(uifd, inev, sizeof(struct input_event));
 }
 
 /* TODO: improve multiple inputs */
@@ -236,7 +258,7 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 					}
 				}
 
-				if (sw->device_id == DEVICE_SIDEWINDER_X6) {
+				if (sw->device_id == PRODUCT_ID_SIDEWINDER_X6) {
 					for (j = SIDEWINDER_X4_MAX_SKEYS; j < SIDEWINDER_X6_MAX_SKEYS; j++) {
 						int skey = 1 << j;
 
@@ -247,7 +269,6 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 				}
 			}
 		}
-	/* TODO: use send_key() on keypress */
 	} else if (nbytes == SIZE_MKEYS && buf[0] == 1) {
 		int i;
 		uint32_t key;
@@ -255,43 +276,29 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 		key = buf[6];
 
 		switch(key) {
-			case MKEY_GAMECENTER: printf("Game Center pressed\n");	break;
+			case MKEY_GAMECENTER: toggle_macropad();	break;
 			case MKEY_RECORD: printf("Record pressed\n");			break;
 			case MKEY_PROFILE: switch_profile();					break;
 		}
 	}
 }
 
+void cleanup() {
+	ioctl(uifd, UI_DEV_DESTROY);
+	close(uifd);
+	close(epfd);
+	close(fd);
+	free(epev);
+	free(inev);
+	free(uidev);
+	free(sw);
+}
+
 int main(int argc, char **argv) {
 	uint8_t nbytes;
-	int32_t epfd;
 	unsigned char buf[MAX_BUF];
-	/* TODO: epoll -> global */
-	struct epoll_event *ev;
-	/* TODO: uinput -> global */
-	struct uinput_user_dev *uidev;
-	struct input_event iev;
-	int ret;
-
-	iev.type = EV_KEY;
-	iev.code = KEY_D;
-	iev.value = 1;
 
 	sw = calloc(4, sizeof(struct sidewinder_data));
-	ev = calloc(2, sizeof(struct epoll_event));
-	uidev = calloc(7, sizeof(struct uinput_user_dev));
-	epfd = epoll_create1(0);
-	/* TODO: move to setup_uinput */
-	sw->uifd = open("/dev/uinput", O_WRONLY);
-	ioctl(sw->uifd, UI_SET_EVBIT, EV_KEY);
-	ioctl(sw->uifd, UI_SET_KEYBIT, KEY_D);
-	snprintf(uidev->name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
-	uidev->id.bustype = BUS_USB;
-	uidev->id.vendor = 0x1;
-	uidev->id.product = 0x1;
-	uidev->id.version = 1;
-	write(sw->uifd, uidev, sizeof(struct uinput_user_dev));
-	ioctl(sw->uifd, UI_DEV_CREATE);
 
 	signal(SIGINT, handler);
 	signal(SIGHUP, handler);
@@ -300,29 +307,18 @@ int main(int argc, char **argv) {
 
 	setup_udev();
 	setup_hidraw();
-
-	/* TODO: move to setup_epoll() */
-	ev->data.fd = sw->fd;
-	ev->events = EPOLLIN | EPOLLET;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, sw->fd, ev);
+	setup_uidev();
+	setup_epoll();
 
 	/* setting initial profile */
 	init_device();
 
 	while (active) {
-		epoll_wait(epfd, ev, MAX_EVENTS, -1);
-		nbytes = read(sw->fd, buf, MAX_BUF);
+		epoll_wait(epfd, epev, MAX_EVENTS, -1);
+		nbytes = read(fd, buf, MAX_BUF);
 		process_input(nbytes, buf);
 	}
 
-	/* cleanup */
-	ioctl(sw->uifd, UI_DEV_DESTROY);
-	close(sw->uifd);
-	close(epfd);
-	close(sw->fd);
-	free(uidev);
-	free(ev);
-	free(sw);
-
+	cleanup();
 	exit(0);
 }
