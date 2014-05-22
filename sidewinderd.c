@@ -20,6 +20,7 @@
 
 #include <linux/hidraw.h>
 #include <linux/input.h>
+#include <linux/uinput.h>
 
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
@@ -84,10 +85,12 @@
 /* global variables */
 volatile uint8_t active = 1;
 
+/* global structs */
 struct sidewinder_data {
 	uint8_t device_id;
 	uint8_t profile;
 	int32_t fd;
+	int32_t uifd;
 	const char *device_node;
 } *sw;
 
@@ -191,7 +194,24 @@ void init_device() {
 }
 
 void send_key(uint32_t skey) {
-	printf("key pressed: %x\n", skey);
+	struct input_event *ev;
+
+	ev = calloc(3, sizeof(ev));
+	ev->type = EV_KEY;
+	ev->code = KEY_D;
+	ev->value = 1;
+	write(sw->uifd, ev, sizeof(struct input_event));
+
+
+	ev->type = EV_KEY;
+	ev->code = KEY_D;
+	ev->value = 0;
+	write(sw->uifd, ev, sizeof(struct input_event));
+
+	ev->type = EV_SYN;
+	ev->code = 0;
+	ev->value = 0;
+	write(sw->uifd, ev, sizeof(struct input_event));
 }
 
 /* TODO: improve multiple inputs */
@@ -244,12 +264,34 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 
 int main(int argc, char **argv) {
 	uint8_t nbytes;
-	uint32_t epfd;
+	int32_t epfd;
 	unsigned char buf[MAX_BUF];
-	struct epoll_event ev;
+	/* TODO: epoll -> global */
+	struct epoll_event *ev;
+	/* TODO: uinput -> global */
+	struct uinput_user_dev *uidev;
+	struct input_event iev;
+	int ret;
+
+	iev.type = EV_KEY;
+	iev.code = KEY_D;
+	iev.value = 1;
 
 	sw = calloc(4, sizeof(struct sidewinder_data));
+	ev = calloc(2, sizeof(struct epoll_event));
+	uidev = calloc(7, sizeof(struct uinput_user_dev));
 	epfd = epoll_create1(0);
+	/* TODO: move to setup_uinput */
+	sw->uifd = open("/dev/uinput", O_WRONLY);
+	ioctl(sw->uifd, UI_SET_EVBIT, EV_KEY);
+	ioctl(sw->uifd, UI_SET_KEYBIT, KEY_D);
+	snprintf(uidev->name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
+	uidev->id.bustype = BUS_USB;
+	uidev->id.vendor = 0x1;
+	uidev->id.product = 0x1;
+	uidev->id.version = 1;
+	write(sw->uifd, uidev, sizeof(struct uinput_user_dev));
+	ioctl(sw->uifd, UI_DEV_CREATE);
 
 	signal(SIGINT, handler);
 	signal(SIGHUP, handler);
@@ -259,23 +301,27 @@ int main(int argc, char **argv) {
 	setup_udev();
 	setup_hidraw();
 
-	/* epoll setup */
-	ev.data.fd = sw->fd;
-	ev.events = EPOLLIN | EPOLLET;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, sw->fd, &ev);
+	/* TODO: move to setup_epoll() */
+	ev->data.fd = sw->fd;
+	ev->events = EPOLLIN | EPOLLET;
+	epoll_ctl(epfd, EPOLL_CTL_ADD, sw->fd, ev);
 
 	/* setting initial profile */
 	init_device();
 
 	while (active) {
-		epoll_wait(epfd, &ev, MAX_EVENTS, -1);
+		epoll_wait(epfd, ev, MAX_EVENTS, -1);
 		nbytes = read(sw->fd, buf, MAX_BUF);
 		process_input(nbytes, buf);
 	}
 
 	/* cleanup */
+	ioctl(sw->uifd, UI_DEV_DESTROY);
+	close(sw->uifd);
 	close(epfd);
 	close(sw->fd);
+	free(uidev);
+	free(ev);
 	free(sw);
 
 	exit(0);
