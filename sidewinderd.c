@@ -63,7 +63,7 @@ struct sidewinder_data {
 	uint16_t device_id;
 	uint8_t profile;
 	uint8_t auto_led;
-	uint8_t record_led;
+	uint8_t record_led;	/* 0: off, 1: breath, 2: blink, 3: solid */
 	uint8_t macropad;
 	const char *device_node;
 } *sw;
@@ -154,7 +154,7 @@ void setup_uidev() {
 		}
 	}
 
-	/* TODO: dynamically get needed keys by play_macro(), and set_keybit() */
+	/* TODO: dynamically get and setbit needed keys by load_config() */
 	/* Currently, we set all keybits, to make things easier. */
 	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
 
@@ -216,47 +216,47 @@ void setup_config() {
 	/* profile 1 special keys */
 	group = config_setting_add(root, "profile_1", CONFIG_TYPE_GROUP);
 	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s01.mhm");
+	config_setting_set_string(setting, "p1_s01.xml");
 	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s02.mhm");
+	config_setting_set_string(setting, "p1_s02.xml");
 	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s03.mhm");
+	config_setting_set_string(setting, "p1_s03.xml");
 	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s04.mhm");
+	config_setting_set_string(setting, "p1_s04.xml");
 	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s05.mhm");
+	config_setting_set_string(setting, "p1_s05.xml");
 	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s06.mhm");
+	config_setting_set_string(setting, "p1_s06.xml");
 
 	/* profile 2 special keys */
 	group = config_setting_add(root, "profile_2", CONFIG_TYPE_GROUP);
 	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s01.mhm");
+	config_setting_set_string(setting, "p2_s01.xml");
 	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s02.mhm");
+	config_setting_set_string(setting, "p2_s02.xml");
 	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s03.mhm");
+	config_setting_set_string(setting, "p2_s03.xml");
 	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s04.mhm");
+	config_setting_set_string(setting, "p2_s04.xml");
 	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s05.mhm");
+	config_setting_set_string(setting, "p2_s05.xml");
 	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s06.mhm");
+	config_setting_set_string(setting, "p2_s06.xml");
 
 	/* profile 3 special keys */
 	group = config_setting_add(root, "profile_3", CONFIG_TYPE_GROUP);
 	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s01.mhm");
+	config_setting_set_string(setting, "p3_s01.xml");
 	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s02.mhm");
+	config_setting_set_string(setting, "p3_s02.xml");
 	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s03.mhm");
+	config_setting_set_string(setting, "p3_s03.xml");
 	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s04.mhm");
+	config_setting_set_string(setting, "p3_s04.xml");
 	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s05.mhm");
+	config_setting_set_string(setting, "p3_s05.xml");
 	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s06.mhm");
+	config_setting_set_string(setting, "p3_s06.xml");
 
 	/* read user config */
 	if (config_read_file(cfg, cfg_file) == CONFIG_FALSE) {
@@ -275,10 +275,9 @@ void feature_request() {
 	unsigned char buf[2];
 	/* buf[0] is Report Number, buf[1] is the control byte */
 	buf[0] = 0x7;
-	/* TODO: Record LEDs */
 	buf[1] = 0x04 << sw->profile;
 	buf[1] |= sw->macropad;
-
+	buf[1] |= sw->record_led << 5;
 	/* reset LEDs on program exit */
 	if (!active) {
 		buf[1] = 0;
@@ -325,6 +324,27 @@ void send_key(uint16_t type, uint16_t code, int32_t value) {
 
 void play_macro(int j) {
 	printf("Key S%d has been pressed\n", j);
+}
+
+/* Currently only used for setting LEDs */
+void record_macro() {
+	/*
+	 * We will support recording macros with and without recording
+	 * delays. Therefore, pressing the macro key twice will set the LED
+	 * to "breath" instead of "solid" and enable delay-recording.
+	 * Blinking LED will be set out of "solid" or "breath" mode, when
+	 * macro recording is active. Pressing the Record key again, while
+	 * the LED is set to either "breath" or "blinking" will exit
+	 * recording.
+	 */
+	switch (sw->record_led) {
+		case 0: sw->record_led = 3;	break;
+		case 1: sw->record_led = 0;	break;
+		case 2: sw->record_led = 0;	break;
+		case 3: sw->record_led = 1;	break;
+	}
+
+	feature_request();
 }
 
 /*
@@ -427,10 +447,10 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
 		key = buf[6];
 
-		switch(key) {
+		switch (key) {
 			case MKEY_GAMECENTER: toggle_macropad();	break;
-			case MKEY_RECORD: printf("Record pressed\n");			break;
-			case MKEY_PROFILE: switch_profile();					break;
+			case MKEY_RECORD: record_macro();			break;
+			case MKEY_PROFILE: switch_profile();		break;
 		}
 	}
 }
