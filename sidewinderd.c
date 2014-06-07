@@ -37,45 +37,11 @@
 
 /* constants */
 #define MAX_BUF		8
-#define SIZE_SKEYS	5
-#define SIZE_MKEYS	8
 #define MAX_EVENTS	1
 #define MIN_PROFILE	0
 #define MAX_PROFILE	2
 #define SIDEWINDER_X6_MAX_SKEYS	30
 #define SIDEWINDER_X4_MAX_SKEYS	6
-
-/* special keys */
-#define SKEY_S01	0x1
-#define SKEY_S02	0x1 << 1
-#define SKEY_S03	0x1 << 2
-#define SKEY_S04	0x1 << 3
-#define SKEY_S05	0x1 << 4
-#define SKEY_S06	0x1 << 5
-#define SKEY_S07	0x1 << 6
-#define SKEY_S08	0x1 << 7
-#define SKEY_S09	0x1 << 8
-#define SKEY_S10	0x1 << 9
-#define SKEY_S11	0x1 << 10
-#define SKEY_S12	0x1 << 11
-#define SKEY_S13	0x1 << 12
-#define SKEY_S14	0x1 << 13
-#define SKEY_S15	0x1 << 14
-#define SKEY_S16	0x1 << 15
-#define SKEY_S17	0x1 << 16
-#define SKEY_S18	0x1 << 17
-#define SKEY_S19	0x1 << 18
-#define SKEY_S20	0x1 << 19
-#define SKEY_S21	0x1 << 20
-#define SKEY_S22	0x1 << 21
-#define SKEY_S23	0x1 << 22
-#define SKEY_S24	0x1 << 23
-#define SKEY_S25	0x1 << 24
-#define SKEY_S26	0x1 << 25
-#define SKEY_S27	0x1 << 26
-#define SKEY_S28	0x1 << 27
-#define SKEY_S29	0x1 << 28
-#define SKEY_S30	0x1 << 29
 
 /* media keys */
 #define MKEY_GAMECENTER		0x10
@@ -102,6 +68,11 @@ struct sidewinder_data {
 	const char *device_node;
 } *sw;
 
+struct macro_keys {
+	uint8_t is_pressed;
+	const char *path_to_xml;
+} macro_skey[30];
+
 void handler() {
 	active = 0;
 }
@@ -118,7 +89,6 @@ void setup_udev() {
 	snprintf(vid_microsoft, sizeof(vid_microsoft) + 1, "%04x", VENDOR_ID_MICROSOFT);
 	snprintf(pid_sidewinder_x6, sizeof(pid_sidewinder_x6) + 1, "%04x", PRODUCT_ID_SIDEWINDER_X6);
 	snprintf(pid_sidewinder_x4, sizeof(pid_sidewinder_x4) + 1, "%04x", PRODUCT_ID_SIDEWINDER_X4);
-
 	udev = udev_new();
 
 	if (!udev) {
@@ -133,7 +103,6 @@ void setup_udev() {
 
 	udev_list_entry_foreach(dev_list_entry, devices) {
 		const char *path, *temp_path;
-
 		path = udev_list_entry_get_name(dev_list_entry);
 		dev = udev_device_new_from_syspath(udev, path);
 		temp_path = udev_device_get_devnode(dev);
@@ -171,6 +140,7 @@ void setup_hidraw() {
 }
 
 void setup_uidev() {
+	int i;
 	uidev = calloc(7, sizeof(struct uinput_user_dev));
 	inev = calloc(3, sizeof(struct input_event));
 	uifd = open("/dev/uinput", O_WRONLY);
@@ -184,11 +154,23 @@ void setup_uidev() {
 		}
 	}
 
-	/* TODO: dynamically get needed keys by macro_player(), and set_keybit() */
+	/* TODO: dynamically get needed keys by play_macro(), and set_keybit() */
+	/* Currently, we set all keybits, to make things easier. */
 	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
-	ioctl(uifd, UI_SET_KEYBIT, KEY_LEFTSHIFT);
-	ioctl(uifd, UI_SET_KEYBIT, KEY_T);
-	ioctl(uifd, UI_SET_KEYBIT, KEY_LEFTCTRL);
+
+	for (i = KEY_ESC; i <= KEY_KPDOT; i++) {
+		ioctl(uifd, UI_SET_KEYBIT, i);
+	}
+
+	for (i = KEY_ZENKAKUHANKAKU; i <= KEY_F24; i++) {
+		ioctl(uifd, UI_SET_KEYBIT, i);
+	}
+
+	for (i = KEY_PLAYCD; i <= KEY_MICMUTE; i++) {
+		ioctl(uifd, UI_SET_KEYBIT, i);
+	}
+
+	/* our uinput device's details */
 	snprintf(uidev->name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
 	uidev->id.bustype = BUS_USB;
 	uidev->id.vendor = 0x1;
@@ -209,10 +191,9 @@ void setup_epoll() {
 void setup_config() {
 	struct config_t *cfg;
 	struct config_setting_t *root, *group, *setting;
-	static const char *cfg_file = ".sidewinderd.conf";
+	static const char *cfg_file = "sidewinderd.conf";
 	int ret;
 	cfg = calloc(12, sizeof(struct config_t));
-
 	config_init(cfg);
 	root = config_root_setting(cfg);
 
@@ -221,11 +202,13 @@ void setup_config() {
 	config_setting_set_string(setting, "nobody");
 	setting = config_setting_add(root, "group", CONFIG_TYPE_STRING);
 	config_setting_set_string(setting, "nobody");
-	setting = config_setting_add(root, "macro_path", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "/home/nobody/.sidewinderd/");
-	setting = config_setting_add(root, "default_profile", CONFIG_TYPE_INT);
+	setting = config_setting_add(root, "folder_path", CONFIG_TYPE_STRING);
+	config_setting_set_string(setting, "~/.sidewinderd/");
+	setting = config_setting_add(root, "profile", CONFIG_TYPE_INT);
 	config_setting_set_string(setting, "1");
 	setting = config_setting_add(root, "ms_compat_mode", CONFIG_TYPE_BOOL);
+	config_setting_set_string(setting, "false");
+	setting = config_setting_add(root, "save_profile_on_exit", CONFIG_TYPE_BOOL);
 	config_setting_set_string(setting, "false");
 
 	/* TODO: use for-loop */
@@ -233,50 +216,53 @@ void setup_config() {
 	/* profile 1 special keys */
 	group = config_setting_add(root, "profile_1", CONFIG_TYPE_GROUP);
 	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p1_s01.mhm");
 	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p1_s02.mhm");
 	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p1_s03.mhm");
 	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p1_s04.mhm");
 	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p1_s05.mhm");
 	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p1_s06.mhm");
 
 	/* profile 2 special keys */
 	group = config_setting_add(root, "profile_2", CONFIG_TYPE_GROUP);
 	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p2_s01.mhm");
 	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p2_s02.mhm");
 	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p2_s03.mhm");
 	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p2_s04.mhm");
 	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p2_s05.mhm");
 	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p2_s06.mhm");
 
 	/* profile 3 special keys */
 	group = config_setting_add(root, "profile_3", CONFIG_TYPE_GROUP);
 	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p3_s01.mhm");
 	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p3_s02.mhm");
 	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p3_s03.mhm");
 	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p3_s04.mhm");
 	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p3_s05.mhm");
 	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "unknown.mhm");
+	config_setting_set_string(setting, "p3_s06.mhm");
 
+	/* read user config */
 	if (config_read_file(cfg, cfg_file) == CONFIG_FALSE) {
+		/* if no user config is available, write new config */
 		if (config_write_file(cfg, cfg_file) == CONFIG_FALSE) {
+			/* writing new config is not possible due to some reason */
 			/* TODO: error handling */
 		}
 	}
@@ -287,9 +273,9 @@ void setup_config() {
 
 void feature_request() {
 	unsigned char buf[2];
-
 	/* buf[0] is Report Number, buf[1] is the control byte */
 	buf[0] = 0x7;
+	/* TODO: Record LEDs */
 	buf[1] = 0x04 << sw->profile;
 	buf[1] |= sw->macropad;
 	ioctl(fd, HIDIOCSFEATURE(sizeof(buf)), buf);
@@ -311,6 +297,7 @@ void switch_profile() {
 }
 
 void init_device() {
+	/* TODO: read profile from config */
 	sw->profile = 0;
 	sw->auto_led = 0;
 	sw->record_led = 0;
@@ -318,37 +305,10 @@ void init_device() {
 	feature_request();
 }
 
-/* TODO: general design, for use with play_macro() */
-/* In this state, the function will open a terminal tab in GNOME 3.10 */
-void send_key(uint32_t skey) {
-	inev->type = EV_KEY;
-	inev->code = KEY_LEFTCTRL;
-	inev->value = 1;
-	write(uifd, inev, sizeof(struct input_event));
-
-	inev->type = EV_KEY;
-	inev->code = KEY_LEFTSHIFT;
-	inev->value = 1;
-	write(uifd, inev, sizeof(struct input_event));
-
-	inev->type = EV_KEY;
-	inev->code = KEY_T;
-	inev->value = 1;
-	write(uifd, inev, sizeof(struct input_event));
-
-	inev->type = EV_KEY;
-	inev->code = KEY_LEFTCTRL;
-	inev->value = 0;
-	write(uifd, inev, sizeof(struct input_event));
-
-	inev->type = EV_KEY;
-	inev->code = KEY_LEFTSHIFT;
-	inev->value = 0;
-	write(uifd, inev, sizeof(struct input_event));
-
-	inev->type = EV_KEY;
-	inev->code = KEY_T;
-	inev->value = 0;
+void send_key(uint16_t type, uint16_t code, int32_t value) {
+	inev->type = type;
+	inev->code = code;
+	inev->value = value;
 	write(uifd, inev, sizeof(struct input_event));
 
 	inev->type = EV_SYN;
@@ -357,25 +317,73 @@ void send_key(uint32_t skey) {
 	write(uifd, inev, sizeof(struct input_event));
 }
 
-/* TODO: improve multiple inputs */
-void process_input(uint8_t nbytes, unsigned char *buf) {
-	if (nbytes == SIZE_SKEYS && buf[0] == 8) {
-		int i;
+void play_macro(int j) {
+	printf("Key S%d has been pressed\n", j);
+}
 
-		/* cutting off buf[0] */
+/*
+ * process_input() now checks, which key was pressed. The macro keys are
+ * packed in a 5-byte buffer, media keys (including Bank Switch and
+ * Record) use 8-bytes.
+ */
+void process_input(uint8_t nbytes, unsigned char *buf) {
+	if (nbytes == 5 && buf[0] == 8) {
+		int i;
+		/*
+		 * cutting off buf[0], which is used to differentiate between
+		 * macro and media keys. Our task is now to translate the buffer
+		 * codes to something we can work with. Here is a table, where
+		 * you can look up the keys and buffer, if you want to improve
+		 * this method:
+		 *
+		 * S1	0x08 0x01 0x00 0x00 0x00 - buf[1]
+		 * S2	0x08 0x02 0x00 0x00 0x00 - buf[1]
+		 * S3	0x08 0x04 0x00 0x00 0x00 - buf[1]
+		 * S4	0x08 0x08 0x00 0x00 0x00 - buf[1]
+		 * S5	0x08 0x10 0x00 0x00 0x00 - buf[1]
+		 * S6	0x08 0x20 0x00 0x00 0x00 - buf[1]
+		 * S7	0x08 0x40 0x00 0x00 0x00 - buf[1]
+		 * S8	0x08 0x80 0x00 0x00 0x00 - buf[1]
+		 * S9	0x08 0x00 0x01 0x00 0x00 - buf[2]
+		 * S10	0x08 0x00 0x02 0x00 0x00 - buf[2]
+		 * S11	0x08 0x00 0x04 0x00 0x00 - buf[2]
+		 * S12	0x08 0x00 0x08 0x00 0x00 - buf[2]
+		 * S13	0x08 0x00 0x10 0x00 0x00 - buf[2]
+		 * S14	0x08 0x00 0x20 0x00 0x00 - buf[2]
+		 * S15	0x08 0x00 0x40 0x00 0x00 - buf[2]
+		 * S16	0x08 0x00 0x80 0x00 0x00 - buf[2]
+		 * S17	0x08 0x00 0x00 0x01 0x00 - buf[3]
+		 * S18	0x08 0x00 0x00 0x02 0x00 - buf[3]
+		 * S19	0x08 0x00 0x00 0x04 0x00 - buf[3]
+		 * S20	0x08 0x00 0x00 0x08 0x00 - buf[3]
+		 * S21	0x08 0x00 0x00 0x10 0x00 - buf[3]
+		 * S22	0x08 0x00 0x00 0x20 0x00 - buf[3]
+		 * S23	0x08 0x00 0x00 0x40 0x00 - buf[3]
+		 * S24	0x08 0x00 0x00 0x80 0x00 - buf[3]
+		 * S25	0x08 0x00 0x00 0x00 0x01 - buf[4]
+		 * S26	0x08 0x00 0x00 0x00 0x02 - buf[4]
+		 * S27	0x08 0x00 0x00 0x00 0x04 - buf[4]
+		 * S28	0x08 0x00 0x00 0x00 0x08 - buf[4]
+		 * S29	0x08 0x00 0x00 0x00 0x10 - buf[4]
+		 * S30	0x08 0x00 0x00 0x00 0x20 - buf[4]
+		 */
 		for (i = 1; i < nbytes; i++) {
 			uint32_t key;
 
 			if (buf[i]) {
 				int j;
-
 				key = buf[i] << (8 * (i - 1));
 
 				for (j = 0; j < SIDEWINDER_X4_MAX_SKEYS; j++) {
 					int skey = 1 << j;
 
 					if (key & skey) {
-						send_key(skey);
+						if (!macro_skey[j].is_pressed) {
+							macro_skey[j].is_pressed = 1;
+							play_macro(j);
+						}
+					} else {
+						macro_skey[j].is_pressed = 0;
 					}
 				}
 
@@ -384,13 +392,30 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 						int skey = 1 << j;
 
 						if (key & skey) {
-							send_key(skey);
+							if (!macro_skey[j].is_pressed) {
+								macro_skey[j].is_pressed = 1;
+								play_macro(j);
+							}
+						} else {
+							macro_skey[j].is_pressed = 0;
 						}
 					}
 				}
 			}
+
+			/*
+			 * quick and dirty hack to unregister all pressed keys, when
+			 * packet 0x08 0x00 0x00 0x00 0x00 is received
+			 */
+			if (buf[1] == 0 && buf[2] == 0 && buf[3] == 0 && buf[4] == 0) {
+				int k;
+
+				for (k = 0; k < 30; k++) {
+					macro_skey[k].is_pressed = 0;
+				}
+			}
 		}
-	} else if (nbytes == SIZE_MKEYS && buf[0] == 1) {
+	} else if (nbytes == 8 && buf[0] == 1) {
 		int i;
 		uint32_t key;
 		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
@@ -418,8 +443,13 @@ void cleanup() {
 int main(int argc, char **argv) {
 	uint8_t nbytes;
 	unsigned char buf[MAX_BUF];
-
+	int i;
 	sw = calloc(4, sizeof(struct sidewinder_data));
+
+	for (i = 0; i < 30; i++) {
+		macro_skey[i].is_pressed = 0;
+		macro_skey[i].path_to_xml = 0;
+	}
 
 	signal(SIGINT, handler);
 	signal(SIGHUP, handler);
@@ -435,8 +465,17 @@ int main(int argc, char **argv) {
 	/* setting initial profile */
 	init_device();
 
+	/* main loop */
 	while (active) {
+		/*
+		 * epoll_wait() checks our device for any changes and blocks the
+		 * loop. This leads to a very efficient polling mechanism.
+		 */
 		epoll_wait(epfd, epev, MAX_EVENTS, -1);
+		/*
+		 * epoll_wait() unblocks the loop, because a signal has been
+		 * registered. We use read() to check the signal.
+		 */
 		nbytes = read(fd, buf, MAX_BUF);
 		process_input(nbytes, buf);
 	}
