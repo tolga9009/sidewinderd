@@ -27,6 +27,9 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+
 /* VIDs & PIDs*/
 #define VENDOR_ID_MICROSOFT			0x045e
 #define PRODUCT_ID_SIDEWINDER_X6	0x074b

@@ -1,7 +1,8 @@
 CC = gcc
+CFLAGS += $(INCLUDES)
 CXXFLAGS = -Wall -Wextra
-LDFLAGS = -ludev -lconfig
-INCLUDES =
+LDFLAGS = -ludev -lconfig $(shell xml2-config --libs)
+INCLUDES = $(shell xml2-config --cflags)
 
 HDRS =
 SRCS = sidewinderd.c
