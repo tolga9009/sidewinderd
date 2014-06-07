@@ -278,6 +278,12 @@ void feature_request() {
 	/* TODO: Record LEDs */
 	buf[1] = 0x04 << sw->profile;
 	buf[1] |= sw->macropad;
+
+	/* reset LEDs on program exit */
+	if (!active) {
+		buf[1] = 0;
+	}
+
 	ioctl(fd, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
@@ -438,6 +444,7 @@ void cleanup() {
 	free(inev);
 	free(uidev);
 	free(sw);
+	printf("\nThe almighty Sidewinder daemon has been eliminated\n");
 }
 
 int main(int argc, char **argv) {
@@ -480,6 +487,7 @@ int main(int argc, char **argv) {
 		process_input(nbytes, buf);
 	}
 
+	feature_request();
 	cleanup();
 	exit(0);
 }
