@@ -11,7 +11,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
@@ -66,6 +66,7 @@ int32_t fd, uifd, epfd;
 struct uinput_user_dev *uidev;
 struct input_event *inev;
 struct epoll_event *epev;
+struct config_t *cfg;
 struct sidewinder_data {
 	uint16_t device_id;
 	uint8_t profile;
@@ -76,11 +77,14 @@ struct sidewinder_data {
 	const char *device_node;
 } *sw;
 
-/* TODO: dynamical allocation of macro_skey[], check sw->max_skeys */
+/*
+ * TODO: dynamical allocation of macro_skey[], check sw->max_skeys and
+ * multiplicate it with number of profiles.
+ */
 struct macro_keys {
 	uint8_t is_pressed;
 	const char *path_to_xml;
-} macro_skey[30];
+} macro_skey[90];
 
 void handler() {
 	active = 0;
@@ -163,8 +167,11 @@ void setup_uidev() {
 		}
 	}
 
-	/* TODO: dynamically get and setbit needed keys by play_macro() */
-	/* Currently, we set all keybits, to make things easier. */
+	/*
+	 * TODO: dynamically get and setbit needed keys by play_macro()
+	 *
+	 * Currently, we set all keybits, to make things easier.
+	 */
 	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
 	ioctl(uifd, UI_SET_EVBIT, EV_SYN);
 
@@ -200,7 +207,6 @@ void setup_epoll() {
 
 void setup_config() {
 	int ret, i, j;
-	struct config_t *cfg;
 	struct config_setting_t *root, *group, *setting;
 	static const char *cfg_file = "sidewinderd.conf";
 	unsigned char profile_count[] = "profile_1";
@@ -252,8 +258,32 @@ void setup_config() {
 		}
 	}
 
-	config_destroy(cfg);
-	free(cfg);
+	/*
+	 * TODO: move the code below to load_config()
+	 *
+	 * config read-write has ended, we can use the config now
+	 * assigning xml paths to struct macro_keys macro_skey[]
+	 */
+	for (i = 0; i < sw->max_skeys; i++) {
+		snprintf(&skey_count[1], 3, "%02d", (i + 1));
+		setting = config_setting_add(group, skey_count, CONFIG_TYPE_STRING);
+
+		setting = config_lookup(cfg, "profile_1");
+	}
+
+	/* setting up config for device */
+	for (i = MIN_PROFILE; i <= MAX_PROFILE; i++) {
+		snprintf(&profile_count[8], 2, "%1d", (i + 1));
+		setting = config_lookup(cfg, profile_count);
+
+		/* TODO: count settings with config_setting_length(setting) */
+		for (j = 0; j < sw->max_skeys; j++) {
+			/* formatting skey_count */
+			snprintf(&skey_count[1], 3, "%02d", (j + 1));
+			/* writing xml paths to every unique key's path_to_xml */
+			config_setting_lookup_string(setting, skey_count, &macro_skey[(sw->max_skeys * i) + j].path_to_xml);
+		}
+	}
 }
 
 void feature_request() {
@@ -315,11 +345,11 @@ void send_key(uint16_t type, uint16_t code, int32_t value) {
 }
 
 /* TODO: interrupt and exit play_macro when a key is pressed */
+/* BUG: if Bank Switch is pressed during play_macro(), crazy things happen */
 void play_macro(int j) {
 	xmlTextReaderPtr reader;
 	int ret;
-	/* TODO: read xml file from pressed key */
-	reader = xmlReaderForFile("sample.xml", NULL, 0);
+	reader = xmlReaderForFile(macro_skey[(sw->profile * sw->max_skeys) + j].path_to_xml, NULL, 0);
 
 	if (reader != NULL) {
 		ret = xmlTextReaderRead(reader);
@@ -488,6 +518,7 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
 		key = buf[6];
 
+		/* TODO: implement is_pressed for these keys, too! */
 		switch (key) {
 			case MKEY_GAMECENTER: toggle_macropad();	break;
 			case MKEY_RECORD: record_macro();			break;
@@ -502,6 +533,9 @@ void cleanup() {
 	/* reset device LEDs */
 	feature_request();
 
+	/* destroy configuration */
+	config_destroy(cfg);
+
 	/* destroying uinput device */
 	ioctl(uifd, UI_DEV_DESTROY);
 
@@ -511,6 +545,7 @@ void cleanup() {
 	close(fd);
 
 	/* free up allocated memory */
+	free(cfg);
 	free(epev);
 	free(inev);
 	free(uidev);
@@ -526,7 +561,8 @@ int main(int argc, char **argv) {
 	int i;
 	sw = calloc(4, sizeof(struct sidewinder_data));
 
-	for (i = 0; i < 30; i++) {
+	/* TODO: move to setup_device() and dynamically allocate needed macro_skeys */
+	for (i = 0; i < 90; i++) {
 		macro_skey[i].is_pressed = 0;
 		macro_skey[i].path_to_xml = 0;
 	}
