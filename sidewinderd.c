@@ -1,11 +1,19 @@
 /*
- * Sidewinder daemon - used for supporting the special keys of Microsoft
- * Sidewinder X4 / X6 gaming keyboards.
- *
+ * Sidewinder daemon - support for Microsoft Sidewinder X4 / X6 keyboards
  * Copyright (c) 2014 Tolga Cakir <tolga@cevel.net>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  * 
- * Special Thanks to Filip Wieladek, Andreas Bader and Alan Ott. Without
- * these guys, I wouldn't be able to do anything.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <stdint.h>
@@ -68,6 +76,7 @@ struct sidewinder_data {
 	const char *device_node;
 } *sw;
 
+/* TODO: dynamical allocation of macro_skey[], check sw->max_skeys */
 struct macro_keys {
 	uint8_t is_pressed;
 	const char *path_to_xml;
