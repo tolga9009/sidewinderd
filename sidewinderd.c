@@ -48,6 +48,8 @@
 #define MKEY_RECORD			0x11
 #define MKEY_PROFILE		0x14
 
+/* TOOD: use syslog for status messages */
+
 /* global variables */
 volatile uint8_t active = 1;
 int32_t fd, uifd, epfd;
@@ -61,6 +63,7 @@ struct sidewinder_data {
 	uint8_t profile;
 	uint8_t auto_led;
 	uint8_t record_led;	/* 0: off, 1: breath, 2: blink, 3: solid */
+	uint8_t max_skeys;
 	uint8_t macropad;
 	const char *device_node;
 } *sw;
@@ -151,9 +154,10 @@ void setup_uidev() {
 		}
 	}
 
-	/* TODO: dynamically get and setbit needed keys by load_config() */
+	/* TODO: dynamically get and setbit needed keys by play_macro() */
 	/* Currently, we set all keybits, to make things easier. */
 	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
+	ioctl(uifd, UI_SET_EVBIT, EV_SYN);
 
 	for (i = KEY_ESC; i <= KEY_KPDOT; i++) {
 		ioctl(uifd, UI_SET_KEYBIT, i);
@@ -186,10 +190,13 @@ void setup_epoll() {
 }
 
 void setup_config() {
+	int ret, i, j;
 	struct config_t *cfg;
 	struct config_setting_t *root, *group, *setting;
 	static const char *cfg_file = "sidewinderd.conf";
-	int ret;
+	unsigned char profile_count[] = "profile_1";
+	unsigned char skey_count[] = "S01";
+	unsigned char xml_path[] = "p1/s01.xml";
 	cfg = calloc(12, sizeof(struct config_t));
 	config_init(cfg);
 	root = config_root_setting(cfg);
@@ -202,58 +209,30 @@ void setup_config() {
 	setting = config_setting_add(root, "folder_path", CONFIG_TYPE_STRING);
 	config_setting_set_string(setting, "~/.sidewinderd/");
 	setting = config_setting_add(root, "profile", CONFIG_TYPE_INT);
-	config_setting_set_string(setting, "1");
+	config_setting_set_int(setting, 1);
 	setting = config_setting_add(root, "ms_compat_mode", CONFIG_TYPE_BOOL);
-	config_setting_set_string(setting, "false");
-	setting = config_setting_add(root, "save_profile_on_exit", CONFIG_TYPE_BOOL);
-	config_setting_set_string(setting, "false");
+	config_setting_set_bool(setting, 0);
+	setting = config_setting_add(root, "save_profile", CONFIG_TYPE_BOOL);
+	config_setting_set_bool(setting, 0);
 
-	/* TODO: use for-loop */
+	/* setting up config for device */
+	for (i = MIN_PROFILE; i <= MAX_PROFILE; i++) {
+		snprintf(&profile_count[8], 2, "%1d", (i + 1));
+		group = config_setting_add(root, profile_count, CONFIG_TYPE_GROUP);
 
-	/* profile 1 special keys */
-	group = config_setting_add(root, "profile_1", CONFIG_TYPE_GROUP);
-	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s01.xml");
-	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s02.xml");
-	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s03.xml");
-	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s04.xml");
-	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s05.xml");
-	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p1_s06.xml");
+		for (j = 0; j < sw->max_skeys; j++) {
+			/* formatting skey_count */
+			snprintf(&skey_count[1], 3, "%02d", (j + 1));
+			setting = config_setting_add(group, skey_count, CONFIG_TYPE_STRING);
 
-	/* profile 2 special keys */
-	group = config_setting_add(root, "profile_2", CONFIG_TYPE_GROUP);
-	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s01.xml");
-	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s02.xml");
-	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s03.xml");
-	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s04.xml");
-	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s05.xml");
-	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p2_s06.xml");
-
-	/* profile 3 special keys */
-	group = config_setting_add(root, "profile_3", CONFIG_TYPE_GROUP);
-	setting = config_setting_add(group, "S01", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s01.xml");
-	setting = config_setting_add(group, "S02", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s02.xml");
-	setting = config_setting_add(group, "S03", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s03.xml");
-	setting = config_setting_add(group, "S04", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s04.xml");
-	setting = config_setting_add(group, "S05", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s05.xml");
-	setting = config_setting_add(group, "S06", CONFIG_TYPE_STRING);
-	config_setting_set_string(setting, "p3_s06.xml");
+			/* formatting xml_path */
+			snprintf(&xml_path[1], 2, "%1d", (i + 1));
+			snprintf(&xml_path[2], 3, "%s", "/s");
+			snprintf(&xml_path[4], 3, "%02d", (j + 1));
+			snprintf(&xml_path[6], 5, "%s", ".xml");
+			config_setting_set_string(setting, xml_path);
+		}
+	}
 
 	/* read user config */
 	if (config_read_file(cfg, cfg_file) == CONFIG_FALSE) {
@@ -298,13 +277,20 @@ void switch_profile() {
 	feature_request();
 }
 
-void init_device() {
-	/* TODO: read profile from config */
+void setup_device() {
 	sw->profile = 0;
 	sw->auto_led = 0;
 	sw->record_led = 0;
+
+	if (sw->device_id == PRODUCT_ID_SIDEWINDER_X4) {
+		sw->max_skeys = SIDEWINDER_X4_MAX_SKEYS;
+	}
+
+	if (sw->device_id == PRODUCT_ID_SIDEWINDER_X6) {
+		sw->max_skeys = SIDEWINDER_X6_MAX_SKEYS;
+	}
+
 	sw->macropad = 0;
-	feature_request();
 }
 
 void send_key(uint16_t type, uint16_t code, int32_t value) {
@@ -323,6 +309,7 @@ void send_key(uint16_t type, uint16_t code, int32_t value) {
 void play_macro(int j) {
 	xmlTextReaderPtr reader;
 	int ret;
+	/* TODO: read xml file from pressed key */
 	reader = xmlReaderForFile("sample.xml", NULL, 0);
 
 	if (reader != NULL) {
@@ -420,7 +407,7 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 		 * macro and media keys. Our task is now to translate the buffer
 		 * codes to something we can work with. Here is a table, where
 		 * you can look up the keys and buffer, if you want to improve
-		 * this method:
+		 * the current method:
 		 *
 		 * S1	0x08 0x01 0x00 0x00 0x00 - buf[1]
 		 * S2	0x08 0x02 0x00 0x00 0x00 - buf[1]
@@ -460,7 +447,7 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 				int j;
 				key = buf[i] << (8 * (i - 1));
 
-				for (j = 0; j < SIDEWINDER_X4_MAX_SKEYS; j++) {
+				for (j = 0; j < sw->max_skeys; j++) {
 					int skey = 1 << j;
 
 					if (key & skey) {
@@ -470,21 +457,6 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 						}
 					} else {
 						macro_skey[j].is_pressed = 0;
-					}
-				}
-
-				if (sw->device_id == PRODUCT_ID_SIDEWINDER_X6) {
-					for (j = SIDEWINDER_X4_MAX_SKEYS; j < SIDEWINDER_X6_MAX_SKEYS; j++) {
-						int skey = 1 << j;
-
-						if (key & skey) {
-							if (!macro_skey[j].is_pressed) {
-								macro_skey[j].is_pressed = 1;
-								play_macro(j);
-							}
-						} else {
-							macro_skey[j].is_pressed = 0;
-						}
 					}
 				}
 			}
@@ -516,14 +488,26 @@ void process_input(uint8_t nbytes, unsigned char *buf) {
 }
 
 void cleanup() {
+	/* TODO: check, if save_profile is set and save profile to config */
+
+	/* reset device LEDs */
+	feature_request();
+
+	/* destroying uinput device */
 	ioctl(uifd, UI_DEV_DESTROY);
+
+	/* closing open file descriptors */
 	close(uifd);
 	close(epfd);
 	close(fd);
+
+	/* free up allocated memory */
 	free(epev);
 	free(inev);
 	free(uidev);
 	free(sw);
+
+	/* output some epic status message */
 	printf("\nThe almighty Sidewinder daemon has been eliminated\n");
 }
 
@@ -547,10 +531,11 @@ int main(int argc, char **argv) {
 	setup_hidraw();		/* setup hidraw interface */
 	setup_uidev();		/* sending input events */
 	setup_epoll();		/* watching hidraw device events */
+	setup_device();		/* initialize device */
 	setup_config();		/* parsing config files */
 
-	/* setting initial profile */
-	init_device();
+	/* sync the device */
+	feature_request();
 
 	/* main loop */
 	while (active) {
@@ -567,7 +552,6 @@ int main(int argc, char **argv) {
 		process_input(nbytes, buf);
 	}
 
-	feature_request();
 	cleanup();
 	exit(0);
 }
