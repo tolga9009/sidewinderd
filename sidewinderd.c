@@ -18,6 +18,7 @@
 #include <libconfig.h>
 #include <libudev.h>
 #include <locale.h>
+#include <time.h>
 
 #include <linux/hidraw.h>
 #include <linux/input.h>
@@ -27,8 +28,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include <libxml/parser.h>
-#include <libxml/tree.h>
+#include <libxml/xmlreader.h>
 
 /* VIDs & PIDs*/
 #define VENDOR_ID_MICROSOFT			0x045e
@@ -51,9 +51,6 @@
 /* global variables */
 volatile uint8_t active = 1;
 int32_t fd, uifd, epfd;
-
-/* TODO: struct for special keys, including is_pressed and macro_path */
-/* TODO: macro player and xml parser */
 
 /* global structs */
 struct uinput_user_dev *uidev;
@@ -322,8 +319,71 @@ void send_key(uint16_t type, uint16_t code, int32_t value) {
 	write(uifd, inev, sizeof(struct input_event));
 }
 
+/* TODO: interrupt and exit play_macro when a key is pressed */
 void play_macro(int j) {
-	printf("Key S%d has been pressed\n", j);
+	xmlTextReaderPtr reader;
+	int ret;
+	reader = xmlReaderForFile("sample.xml", NULL, 0);
+
+	if (reader != NULL) {
+		ret = xmlTextReaderRead(reader);
+
+		while (ret == 1 && active) {
+			const xmlChar *name, *attr = NULL;
+			int value, down = 0;
+
+			if (xmlTextReaderNodeType(reader) == XML_ELEMENT_NODE) {
+				name = xmlTextReaderConstName(reader);
+
+				if (xmlTextReaderHasAttributes(reader)) {
+					attr = xmlTextReaderGetAttribute(reader, "Down");
+
+					/* TODO: more elegant way */
+					if (!strcmp(attr, "true")) {
+						down = 1;
+					} else {
+						down = 0;
+					}
+				}
+
+				/*
+				 * TODO: error handling - wrong XML format leads to
+				 * infinite loop
+				 */
+				while (!xmlTextReaderHasValue(reader) && active) {
+					ret = xmlTextReaderRead(reader);
+				}
+
+				/*
+				 * xmlTextReaderConstValue() returns a string, which we
+				 * need to convert to an integer.
+				 */
+				value = strtol(xmlTextReaderConstValue(reader), NULL, 10);
+
+				if (!strcmp(name, "KeyBoardEvent")) {
+					send_key(EV_KEY, value, down);
+				} else if (!strcmp(name, "DelayEvent")) {
+					struct timespec request, remain;
+					/*
+					 * value is given in milliseconds, so we need to
+					 * split it into seconds and nanoseconds.
+					 * nanosleep() is interruptable and saves the
+					 * remaining sleep time.
+					 */
+					request.tv_sec = value / 1000;
+					value = value - (request.tv_sec * 1000);
+					request.tv_nsec = 1000000L * value;
+					nanosleep(&request, &remain);
+				}
+			}
+
+			ret = xmlTextReaderRead(reader);
+		}
+		xmlFreeTextReader(reader);
+		if (ret != 0) {
+			printf("parse failed");
+		}
+	}
 }
 
 /* Currently only used for setting LEDs */
