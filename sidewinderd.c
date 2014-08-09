@@ -74,7 +74,8 @@ struct sidewinder_data {
 	uint8_t record_led;	/* 0: off, 1: breath, 2: blink, 3: solid */
 	uint8_t max_skeys;
 	uint8_t macropad;
-	const char *device_node;
+	const char *devnode_hidraw;
+	const char *devnode_input;
 } *sw;
 
 /*
@@ -111,40 +112,58 @@ void setup_udev() {
 
 	enumerate = udev_enumerate_new(udev);
 	udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+	udev_enumerate_add_match_subsystem(enumerate, "input");
 	udev_enumerate_scan_devices(enumerate);
 	devices = udev_enumerate_get_list_entry(enumerate);
 
 	udev_list_entry_foreach(dev_list_entry, devices) {
-		const char *path, *temp_path;
-		path = udev_list_entry_get_name(dev_list_entry);
-		dev = udev_device_new_from_syspath(udev, path);
-		temp_path = udev_device_get_devnode(dev);
-		dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
+		const char *syspath, *devnode_path;
+		syspath = udev_list_entry_get_name(dev_list_entry);
+		dev = udev_device_new_from_syspath(udev, syspath);
 
-		if (strcmp(udev_device_get_sysattr_value(dev, "bInterfaceNumber"), "01") == 0) {
-			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+		if (strcmp(udev_device_get_subsystem(dev), "hidraw") == 0) {
+			devnode_path = udev_device_get_devnode(dev);
+			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
 
-			if (strcmp(udev_device_get_sysattr_value(dev, "idVendor"), vid_microsoft) == 0) {
-				if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x6) == 0) {
-					sw->device_node = temp_path;
-					sw->device_id = PRODUCT_ID_SIDEWINDER_X6;
-				} else if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x4) == 0) {
-					sw->device_node = temp_path;
-					sw->device_id = PRODUCT_ID_SIDEWINDER_X4;
+			if (!dev) {
+				printf("Unable to find parent device\n");
+				exit(1);
+			}
+
+			if (strcmp(udev_device_get_sysattr_value(dev, "bInterfaceNumber"), "01") == 0) {
+				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+
+				if (strcmp(udev_device_get_sysattr_value(dev, "idVendor"), vid_microsoft) == 0) {
+					if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x6) == 0) {
+						sw->devnode_hidraw = devnode_path;
+						sw->device_id = PRODUCT_ID_SIDEWINDER_X6;
+					} else if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x4) == 0) {
+						sw->devnode_hidraw = devnode_path;
+						sw->device_id = PRODUCT_ID_SIDEWINDER_X4;
+					}
 				}
 			}
+		}
+
+		/* find correct /dev/input/event* file */
+		if (strcmp(udev_device_get_subsystem(dev), "input") == 0
+			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
+			&& strstr(syspath, "event")
+			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
+				devnode_path = udev_device_get_devnode(dev);
+				sw->devnode_input = devnode_path;
 		}
 
 		udev_device_unref(dev);
 	}
 
-	/* Free the enumerator object */
+	/* free the enumerator object */
 	udev_enumerate_unref(enumerate);
 	udev_unref(udev);
 }
 
 void setup_hidraw() {
-	fd = open(sw->device_node, O_RDWR | O_NONBLOCK);
+	fd = open(sw->devnode_hidraw, O_RDWR | O_NONBLOCK);
 
 	if (fd < 0) {
 		printf("Can't open hidraw interface");
