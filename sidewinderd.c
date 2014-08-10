@@ -244,6 +244,8 @@ void setup_config() {
 	config_setting_set_string(setting, "~/.sidewinderd/");
 	setting = config_setting_add(root, "profile", CONFIG_TYPE_INT);
 	config_setting_set_int(setting, 1);
+	setting = config_setting_add(root, "capture_delays", CONFIG_TYPE_BOOL);
+	config_setting_set_bool(setting, 1);
 	setting = config_setting_add(root, "ms_compat_mode", CONFIG_TYPE_BOOL);
 	config_setting_set_bool(setting, 0);
 	setting = config_setting_add(root, "save_profile", CONFIG_TYPE_BOOL);
@@ -434,19 +436,13 @@ void play_macro(int j) {
 /* Currently only used for setting LEDs */
 void record_macro() {
 	/*
-	 * We will support recording macros with and without recording
-	 * delays. Therefore, pressing the macro key twice will set the LED
-	 * to "breath" instead of "solid" and enable delay-recording.
-	 * Blinking LED will be set out of "solid" or "breath" mode, when
-	 * macro recording is active. Pressing the Record key again, while
-	 * the LED is set to either "breath" or "blinking" will exit
-	 * recording.
+	 * Macro recording captures delays by default. Use the configuration
+	 * to disable capturing delays.
 	 */
-	switch (sw->record_led) {
-		case 0: sw->record_led = 3;	break;
-		case 1: sw->record_led = 0;	break;
-		case 2: sw->record_led = 0;	break;
-		case 3: sw->record_led = 1;	break;
+	if (sw->record_led == 0) {
+		sw->record_led = 3;
+	} else {
+		sw->record_led = 0;
 	}
 
 	feature_request();
