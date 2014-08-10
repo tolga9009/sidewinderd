@@ -60,7 +60,7 @@
 
 /* global variables */
 volatile uint8_t active = 1;
-int32_t fd, uifd, epfd;
+int32_t fd, uifd, epfd, evfd;
 
 /* global structs */
 struct uinput_user_dev *uidev;
@@ -74,8 +74,8 @@ struct sidewinder_data {
 	uint8_t record_led;	/* 0: off, 1: breath, 2: blink, 3: solid */
 	uint8_t max_skeys;
 	uint8_t macropad;
-	const char *devnode_hidraw;
-	const char *devnode_input;
+	char *devnode_hidraw;
+	char *devnode_input;
 } *sw;
 
 /*
@@ -135,10 +135,10 @@ void setup_udev() {
 
 				if (strcmp(udev_device_get_sysattr_value(dev, "idVendor"), vid_microsoft) == 0) {
 					if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x6) == 0) {
-						sw->devnode_hidraw = devnode_path;
+						sw->devnode_hidraw = strdup(devnode_path);
 						sw->device_id = PRODUCT_ID_SIDEWINDER_X6;
 					} else if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x4) == 0) {
-						sw->devnode_hidraw = devnode_path;
+						sw->devnode_hidraw = strdup(devnode_path);
 						sw->device_id = PRODUCT_ID_SIDEWINDER_X4;
 					}
 				}
@@ -150,8 +150,7 @@ void setup_udev() {
 			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
 			&& strstr(syspath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
-				devnode_path = udev_device_get_devnode(dev);
-				sw->devnode_input = devnode_path;
+				sw->devnode_input = strdup(udev_device_get_devnode(dev));
 		}
 
 		udev_device_unref(dev);
@@ -433,12 +432,15 @@ void play_macro(int j) {
 	}
 }
 
-/* Currently only used for setting LEDs */
+/*
+ * Macro recording captures delays by default. Use the configuration
+ * to disable capturing delays.
+ */
 void record_macro() {
-	/*
-	 * Macro recording captures delays by default. Use the configuration
-	 * to disable capturing delays.
-	 */
+	uint8_t nbytes;
+	int value;
+	unsigned char buf[MAX_BUF];
+
 	if (sw->record_led == 0) {
 		sw->record_led = 3;
 	} else {
@@ -446,6 +448,21 @@ void record_macro() {
 	}
 
 	feature_request();
+
+	evfd = open(sw->devnode_input, O_RDONLY /*| O_NONBLOCK*/);
+
+	if (evfd < 0) {
+		printf("Can't open input event file");
+		exit(1);
+	}
+
+	while (active) {
+		nbytes = read(evfd, inev, sizeof(struct input_event));
+
+		if (inev->type != 4) {
+			printf("Code: %d, Value: %d, Type: %d\n", inev->code, inev->value, inev->type);
+		}
+	}
 }
 
 /*
@@ -564,6 +581,8 @@ void cleanup() {
 	free(epev);
 	free(inev);
 	free(uidev);
+	free(sw->devnode_hidraw);
+	free(sw->devnode_input);
 	free(sw);
 
 	/* output some epic status message */
@@ -574,7 +593,7 @@ int main(int argc, char **argv) {
 	uint8_t nbytes;
 	unsigned char buf[MAX_BUF];
 	int i;
-	sw = calloc(4, sizeof(struct sidewinder_data));
+	sw = calloc(8, sizeof(struct sidewinder_data));
 
 	/* TODO: move to setup_device() and dynamically allocate needed macro_skeys */
 	for (i = 0; i < 90; i++) {
