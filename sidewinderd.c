@@ -438,6 +438,9 @@ void play_macro(int j) {
  */
 void record_macro() {
 	uint8_t nbytes;
+	struct timeval prev;
+	prev.tv_usec = 0;
+	prev.tv_sec = 0;
 
 	if (sw->record_led == 0) {
 		sw->record_led = 3;
@@ -462,7 +465,15 @@ void record_macro() {
 		nbytes = read(evfd, inev, sizeof(struct input_event));
 		
 		if(inev->type == 1) {
+			int delay;
+
+			if (prev.tv_usec) {
+				long int diff = (inev->time.tv_usec + 1000000 * inev->time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
+				delay = diff / 1000;
+				printf("Delay: %d ms\n", delay);
+			}
 			printf("Code: %d Value: %d Type: %d\n", inev->code, inev->value, inev->type);
+			prev = inev->time;
 		}
 	}
 
