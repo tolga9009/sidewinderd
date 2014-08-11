@@ -36,7 +36,9 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
+#include <libxml/encoding.h>
 #include <libxml/xmlreader.h>
+#include <libxml/xmlwriter.h>
 
 /* VIDs & PIDs*/
 #define VENDOR_ID_MICROSOFT			0x045e
@@ -226,6 +228,7 @@ void setup_epoll() {
 void setup_config() {
 	int ret, i, j;
 	struct config_setting_t *root, *group, *setting;
+	/* TODO: use string operators for building strings */
 	static const char *cfg_file = "sidewinderd.conf";
 	unsigned char profile_count[] = "profile_1";
 	unsigned char skey_count[] = "S01";
@@ -384,7 +387,7 @@ void play_macro(int j) {
 				if (xmlTextReaderHasAttributes(reader)) {
 					attr = xmlTextReaderGetAttribute(reader, "Down");
 
-					/* TODO: more elegant way */
+					/* TODO: more elegant way; also check for false */
 					if (!strcmp(attr, "true")) {
 						down = 1;
 					} else {
@@ -438,6 +441,9 @@ void play_macro(int j) {
  */
 void record_macro() {
 	uint8_t nbytes;
+	char tmp[10];
+	int rc;
+	xmlTextWriterPtr writer;
 	struct timeval prev;
 	prev.tv_usec = 0;
 	prev.tv_sec = 0;
@@ -460,22 +466,75 @@ void record_macro() {
 	/* add /dev/input/event* to epoll watchlist */
 	epoll_ctl(epfd, EPOLL_CTL_ADD, evfd, epev);
 
+	/* create a new xmlWriter with no compression */
+	writer = xmlNewTextWriterFilename("p1/s01.xml", 0);
+
+	/* activate indentation */
+	rc = xmlTextWriterSetIndent(writer, 1);
+
+	/* set indentation character */
+	rc = xmlTextWriterSetIndentString(writer, "\t");
+
+	/* start document with defaults */
+	rc = xmlTextWriterStartDocument(writer, NULL, NULL, NULL);
+
+	/* start root element "Macro" */
+	rc = xmlTextWriterStartElement(writer, BAD_CAST "Macro");
+
 	while (active) {
 		epoll_wait(epfd, epev, MAX_EVENTS, -1);
 		nbytes = read(evfd, inev, sizeof(struct input_event));
-		
-		if(inev->type == 1) {
+
+		if(inev->type == 1 && inev->value != 2) {
 			int delay;
 
 			if (prev.tv_usec) {
 				long int diff = (inev->time.tv_usec + 1000000 * inev->time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
 				delay = diff / 1000;
-				printf("Delay: %d ms\n", delay);
+
+				/* convert delay to string */
+				snprintf(tmp, sizeof(tmp) + 1, "%d", delay);
+
+				/* start element "DelayEvent" */
+				rc = xmlTextWriterStartElement(writer, BAD_CAST "DelayEvent");
+
+				/* write value */
+				rc = xmlTextWriterWriteRaw(writer, BAD_CAST tmp);
+
+				/* close element "DelayEvent" */
+				rc = xmlTextWriterEndElement(writer);
 			}
+
 			printf("Code: %d Value: %d Type: %d\n", inev->code, inev->value, inev->type);
+
+			/* start element "KeyBoardEvent" */
+			rc = xmlTextWriterStartElement(writer, BAD_CAST "KeyBoardEvent");
+
+			if (inev->value) {
+				rc = xmlTextWriterWriteAttribute(writer, BAD_CAST "Down", BAD_CAST "true");
+			} else {
+				rc = xmlTextWriterWriteAttribute(writer, BAD_CAST "Down", BAD_CAST "false");
+			}
+
+			/* convert keycode to string */
+			snprintf(tmp, sizeof(tmp) + 1, "%d", inev->code);
+
+			/* write value */
+			rc = xmlTextWriterWriteRaw(writer, BAD_CAST tmp);
+
+			/* close element "KeyBoardEvent" */
+			rc = xmlTextWriterEndElement(writer);
+
 			prev = inev->time;
 		}
 	}
+
+    /* xmlTextWriterEndDocument() closes all remaining open elements */
+    rc = xmlTextWriterEndDocument(writer);
+    xmlFreeTextWriter(writer);
+
+	/* cleanup function for the XML library */
+	xmlCleanupParser();
 
 	/* remove event file from epoll watchlist */
 	epoll_ctl(epfd, EPOLL_CTL_DEL, evfd, epev);
