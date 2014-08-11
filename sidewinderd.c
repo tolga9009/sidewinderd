@@ -45,7 +45,7 @@
 
 /* constants */
 #define MAX_BUF		8
-#define MAX_EVENTS	1
+#define MAX_EVENTS	2
 #define MIN_PROFILE	0
 #define MAX_PROFILE	2
 #define SIDEWINDER_X6_MAX_SKEYS	30
@@ -438,8 +438,6 @@ void play_macro(int j) {
  */
 void record_macro() {
 	uint8_t nbytes;
-	int value;
-	unsigned char buf[MAX_BUF];
 
 	if (sw->record_led == 0) {
 		sw->record_led = 3;
@@ -449,20 +447,28 @@ void record_macro() {
 
 	feature_request();
 
-	evfd = open(sw->devnode_input, O_RDONLY /*| O_NONBLOCK*/);
+	evfd = open(sw->devnode_input, O_RDONLY | O_NONBLOCK);
 
 	if (evfd < 0) {
 		printf("Can't open input event file");
 		exit(1);
 	}
 
-	while (active) {
-		nbytes = read(evfd, inev, sizeof(struct input_event));
+	/* add /dev/input/event* to epoll watchlist */
+	epoll_ctl(epfd, EPOLL_CTL_ADD, evfd, epev);
 
-		if (inev->type != 4) {
-			printf("Code: %d, Value: %d, Type: %d\n", inev->code, inev->value, inev->type);
+	while (active) {
+		epoll_wait(epfd, epev, MAX_EVENTS, -1);
+		nbytes = read(evfd, inev, sizeof(struct input_event));
+		
+		if(inev->type == 1) {
+			printf("Code: %d Value: %d Type: %d\n", inev->code, inev->value, inev->type);
 		}
 	}
+
+	/* remove event file from epoll watchlist */
+	epoll_ctl(epfd, EPOLL_CTL_DEL, evfd, epev);
+	close(evfd);
 }
 
 /*
@@ -609,7 +615,7 @@ int main(int argc, char **argv) {
 	setup_udev();		/* get device node */
 	setup_hidraw();		/* setup hidraw interface */
 	setup_uidev();		/* sending input events */
-	setup_epoll();		/* watching hidraw device events */
+	setup_epoll();		/* watching device events */
 	setup_device();		/* initialize device */
 	setup_config();		/* parsing config files */
 
