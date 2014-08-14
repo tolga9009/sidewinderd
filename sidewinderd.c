@@ -58,8 +58,6 @@
 #define MKEY_RECORD			0x11
 #define MKEY_PROFILE		0x14
 
-/* TOOD: use syslog for status messages */
-
 /* global variables */
 volatile uint8_t active = 1;
 int32_t fd, uifd, epfd, evfd;
@@ -81,8 +79,7 @@ struct sidewinder_data {
 } *sw;
 
 /*
- * TODO: dynamical allocation of macro_skey[], check sw->max_skeys and
- * multiplicate it with number of profiles.
+ * TODO: remove. Use get_xmlpath() instead.
  */
 struct macro_keys {
 	uint8_t is_pressed;
@@ -94,7 +91,6 @@ void handler() {
 }
 
 void setup_udev() {
-	/* udev */
 	struct udev *udev;
 	struct udev_device *dev;
 	struct udev_enumerate *enumerate;
@@ -208,6 +204,7 @@ void setup_uidev() {
 	}
 
 	/* our uinput device's details */
+	/* TODO: read keyboard information via udev and set config here */
 	snprintf(uidev->name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
 	uidev->id.bustype = BUS_USB;
 	uidev->id.vendor = 0x1;
@@ -367,8 +364,88 @@ void send_key(uint16_t type, uint16_t code, int32_t value) {
 	write(uifd, inev, sizeof(struct input_event));
 }
 
+/*
+ * get_input() checks, which keys were pressed. The macro keys are
+ * packed in a 5-byte buffer, media keys (including Bank Switch and
+ * Record) use 8-bytes.
+ */
+/*
+ * TODO: only return latest pressed key, if multiple keys have been
+ * pressed at the same time.
+ */
+unsigned char get_input(uint8_t nbytes, unsigned char *buf) {
+	int i;
+	unsigned char key;
+
+	if (nbytes == 5 && buf[0] == 8) {
+		/*
+		 * cutting off buf[0], which is used to differentiate between
+		 * macro and media keys. Our task is now to translate the buffer
+		 * codes to something we can work with. Here is a table, where
+		 * you can look up the keys and buffer, if you want to improve
+		 * the current method:
+		 *
+		 * S1	0x08 0x01 0x00 0x00 0x00 - buf[1]
+		 * S2	0x08 0x02 0x00 0x00 0x00 - buf[1]
+		 * S3	0x08 0x04 0x00 0x00 0x00 - buf[1]
+		 * S4	0x08 0x08 0x00 0x00 0x00 - buf[1]
+		 * S5	0x08 0x10 0x00 0x00 0x00 - buf[1]
+		 * S6	0x08 0x20 0x00 0x00 0x00 - buf[1]
+		 * S7	0x08 0x40 0x00 0x00 0x00 - buf[1]
+		 * S8	0x08 0x80 0x00 0x00 0x00 - buf[1]
+		 * S9	0x08 0x00 0x01 0x00 0x00 - buf[2]
+		 * S10	0x08 0x00 0x02 0x00 0x00 - buf[2]
+		 * S11	0x08 0x00 0x04 0x00 0x00 - buf[2]
+		 * S12	0x08 0x00 0x08 0x00 0x00 - buf[2]
+		 * S13	0x08 0x00 0x10 0x00 0x00 - buf[2]
+		 * S14	0x08 0x00 0x20 0x00 0x00 - buf[2]
+		 * S15	0x08 0x00 0x40 0x00 0x00 - buf[2]
+		 * S16	0x08 0x00 0x80 0x00 0x00 - buf[2]
+		 * S17	0x08 0x00 0x00 0x01 0x00 - buf[3]
+		 * S18	0x08 0x00 0x00 0x02 0x00 - buf[3]
+		 * S19	0x08 0x00 0x00 0x04 0x00 - buf[3]
+		 * S20	0x08 0x00 0x00 0x08 0x00 - buf[3]
+		 * S21	0x08 0x00 0x00 0x10 0x00 - buf[3]
+		 * S22	0x08 0x00 0x00 0x20 0x00 - buf[3]
+		 * S23	0x08 0x00 0x00 0x40 0x00 - buf[3]
+		 * S24	0x08 0x00 0x00 0x80 0x00 - buf[3]
+		 * S25	0x08 0x00 0x00 0x00 0x01 - buf[4]
+		 * S26	0x08 0x00 0x00 0x00 0x02 - buf[4]
+		 * S27	0x08 0x00 0x00 0x00 0x04 - buf[4]
+		 * S28	0x08 0x00 0x00 0x00 0x08 - buf[4]
+		 * S29	0x08 0x00 0x00 0x00 0x10 - buf[4]
+		 * S30	0x08 0x00 0x00 0x00 0x20 - buf[4]
+		 */
+		for (i = 1; i < nbytes; i++) {
+			int j;
+
+			for (j = 0; buf[i]; j++) {
+				int k;
+				key = ((i - 1) * 8) + ffs(buf[i]);
+
+				return key;
+
+				buf[i] &= buf[i] - 1;
+			}
+		}
+	} else if (nbytes == 8 && buf[0] == 1) {
+		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
+		key = buf[6];
+
+		/* TODO: recognize media keys and calc key */
+		switch (key) {
+			case MKEY_GAMECENTER: return sw->max_skeys + 1;	break;
+			case MKEY_RECORD: return sw->max_skeys + 2;		break;
+			case MKEY_PROFILE: return sw->max_skeys + 3;		break;
+		}
+	}
+
+	return 0;
+}
+
 /* TODO: interrupt and exit play_macro when a key is pressed */
 /* BUG: if Bank Switch is pressed during play_macro(), crazy things happen */
+/* TODO: read active_keys and block play_macro, if the key is active */
 void play_macro(int j) {
 	xmlTextReaderPtr reader;
 	int ret;
@@ -442,19 +519,33 @@ void play_macro(int j) {
 void record_macro() {
 	uint8_t nbytes;
 	char tmp[10];
-	int rc;
+	const char *path;
+	unsigned char buf[MAX_BUF];
+	int rc, run, i;
 	xmlTextWriterPtr writer;
 	struct timeval prev;
+
 	prev.tv_usec = 0;
 	prev.tv_sec = 0;
+	run = 1;
+	sw->record_led = 3;
+	feature_request();
 
-	if (sw->record_led == 0) {
-		sw->record_led = 3;
-	} else {
-		sw->record_led = 0;
+	while (active && run) {
+		unsigned char key;
+		epoll_wait(epfd, epev, MAX_EVENTS, -1);
+		nbytes = read(fd, buf, MAX_BUF);
+		key = get_input(nbytes, buf);
+
+		if (key && key < sw->max_skeys) {
+			path = macro_skey[key].path_to_xml;
+			sw->record_led = 2;
+			run = 0;
+			feature_request();
+		}
 	}
 
-	feature_request();
+	printf("Start Macro Recording\n");
 
 	evfd = open(sw->devnode_input, O_RDONLY | O_NONBLOCK);
 
@@ -467,7 +558,7 @@ void record_macro() {
 	epoll_ctl(epfd, EPOLL_CTL_ADD, evfd, epev);
 
 	/* create a new xmlWriter with no compression */
-	writer = xmlNewTextWriterFilename("p1/s01.xml", 0);
+	writer = xmlNewTextWriterFilename(path, 0);
 
 	/* activate indentation */
 	rc = xmlTextWriterSetIndent(writer, 1);
@@ -481,16 +572,30 @@ void record_macro() {
 	/* start root element "Macro" */
 	rc = xmlTextWriterStartElement(writer, BAD_CAST "Macro");
 
-	while (active) {
+	run = 1;
+
+	while (active && run) {
+		unsigned char key;
 		epoll_wait(epfd, epev, MAX_EVENTS, -1);
+
+		nbytes = read(fd, buf, MAX_BUF);
+
+		key = get_input(nbytes, buf);
+
+		if (key == sw->max_skeys + 2) {
+			sw->record_led = 0;
+			run = 0;
+			feature_request();
+		}
+
 		nbytes = read(evfd, inev, sizeof(struct input_event));
 
-		if(inev->type == 1 && inev->value != 2) {
-			int delay;
+		if (inev->type == 1 && inev->value != 2) {
 
+			/* TODO: read config, if capture_delays is true */
 			if (prev.tv_usec) {
 				long int diff = (inev->time.tv_usec + 1000000 * inev->time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
-				delay = diff / 1000;
+				int delay = diff / 1000;
 
 				/* convert delay to string */
 				snprintf(tmp, sizeof(tmp) + 1, "%d", delay);
@@ -504,8 +609,6 @@ void record_macro() {
 				/* close element "DelayEvent" */
 				rc = xmlTextWriterEndElement(writer);
 			}
-
-			printf("Code: %d Value: %d Type: %d\n", inev->code, inev->value, inev->type);
 
 			/* start element "KeyBoardEvent" */
 			rc = xmlTextWriterStartElement(writer, BAD_CAST "KeyBoardEvent");
@@ -533,6 +636,8 @@ void record_macro() {
     rc = xmlTextWriterEndDocument(writer);
     xmlFreeTextWriter(writer);
 
+	printf("Exit Macro Recording\n");
+
 	/* cleanup function for the XML library */
 	xmlCleanupParser();
 
@@ -541,99 +646,19 @@ void record_macro() {
 	close(evfd);
 }
 
-/*
- * process_input() now checks, which key was pressed. The macro keys are
- * packed in a 5-byte buffer, media keys (including Bank Switch and
- * Record) use 8-bytes.
- */
-void process_input(uint8_t nbytes, unsigned char *buf) {
-	if (nbytes == 5 && buf[0] == 8) {
-		int i;
-		/*
-		 * cutting off buf[0], which is used to differentiate between
-		 * macro and media keys. Our task is now to translate the buffer
-		 * codes to something we can work with. Here is a table, where
-		 * you can look up the keys and buffer, if you want to improve
-		 * the current method:
-		 *
-		 * S1	0x08 0x01 0x00 0x00 0x00 - buf[1]
-		 * S2	0x08 0x02 0x00 0x00 0x00 - buf[1]
-		 * S3	0x08 0x04 0x00 0x00 0x00 - buf[1]
-		 * S4	0x08 0x08 0x00 0x00 0x00 - buf[1]
-		 * S5	0x08 0x10 0x00 0x00 0x00 - buf[1]
-		 * S6	0x08 0x20 0x00 0x00 0x00 - buf[1]
-		 * S7	0x08 0x40 0x00 0x00 0x00 - buf[1]
-		 * S8	0x08 0x80 0x00 0x00 0x00 - buf[1]
-		 * S9	0x08 0x00 0x01 0x00 0x00 - buf[2]
-		 * S10	0x08 0x00 0x02 0x00 0x00 - buf[2]
-		 * S11	0x08 0x00 0x04 0x00 0x00 - buf[2]
-		 * S12	0x08 0x00 0x08 0x00 0x00 - buf[2]
-		 * S13	0x08 0x00 0x10 0x00 0x00 - buf[2]
-		 * S14	0x08 0x00 0x20 0x00 0x00 - buf[2]
-		 * S15	0x08 0x00 0x40 0x00 0x00 - buf[2]
-		 * S16	0x08 0x00 0x80 0x00 0x00 - buf[2]
-		 * S17	0x08 0x00 0x00 0x01 0x00 - buf[3]
-		 * S18	0x08 0x00 0x00 0x02 0x00 - buf[3]
-		 * S19	0x08 0x00 0x00 0x04 0x00 - buf[3]
-		 * S20	0x08 0x00 0x00 0x08 0x00 - buf[3]
-		 * S21	0x08 0x00 0x00 0x10 0x00 - buf[3]
-		 * S22	0x08 0x00 0x00 0x20 0x00 - buf[3]
-		 * S23	0x08 0x00 0x00 0x40 0x00 - buf[3]
-		 * S24	0x08 0x00 0x00 0x80 0x00 - buf[3]
-		 * S25	0x08 0x00 0x00 0x00 0x01 - buf[4]
-		 * S26	0x08 0x00 0x00 0x00 0x02 - buf[4]
-		 * S27	0x08 0x00 0x00 0x00 0x04 - buf[4]
-		 * S28	0x08 0x00 0x00 0x00 0x08 - buf[4]
-		 * S29	0x08 0x00 0x00 0x00 0x10 - buf[4]
-		 * S30	0x08 0x00 0x00 0x00 0x20 - buf[4]
-		 */
-		for (i = 1; i < nbytes; i++) {
-			uint32_t key;
-
-			if (buf[i]) {
-				int j;
-				key = buf[i] << (8 * (i - 1));
-
-				for (j = 0; j < sw->max_skeys; j++) {
-					int skey = 1 << j;
-
-					if (key & skey) {
-						if (!macro_skey[j].is_pressed) {
-							macro_skey[j].is_pressed = 1;
-							play_macro(j);
-						}
-					} else {
-						macro_skey[j].is_pressed = 0;
-					}
-				}
-			}
-
-			/*
-			 * quick and dirty hack to unregister all pressed keys, when
-			 * packet 0x08 0x00 0x00 0x00 0x00 is received
-			 */
-			if (buf[1] == 0 && buf[2] == 0 && buf[3] == 0 && buf[4] == 0) {
-				int k;
-
-				for (k = 0; k < 30; k++) {
-					macro_skey[k].is_pressed = 0;
-				}
-			}
-		}
-	} else if (nbytes == 8 && buf[0] == 1) {
-		int i;
-		uint32_t key;
-		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
-		key = buf[6];
-
-		/* TODO: implement is_pressed for these keys, too! */
-		switch (key) {
-			case MKEY_GAMECENTER: toggle_macropad();	break;
-			case MKEY_RECORD: record_macro();			break;
-			case MKEY_PROFILE: switch_profile();		break;
-		}
+void process_input(unsigned char key) {
+	if (key && key <= sw->max_skeys) {
+		play_macro(key);
+	} else if (key == sw->max_skeys + 1) {
+		toggle_macropad();
+	} else if (key == sw->max_skeys + 2) {
+		record_macro();
+	} else if (key == sw->max_skeys + 3) {
+		switch_profile();
 	}
 }
+
+/* TODO: get_xmlpath() */
 
 void cleanup() {
 	/* TODO: check, if save_profile is set and save profile to config */
@@ -704,7 +729,7 @@ int main(int argc, char **argv) {
 		 * registered. We use read() to check the signal.
 		 */
 		nbytes = read(fd, buf, MAX_BUF);
-		process_input(nbytes, buf);
+		process_input(get_input(nbytes, buf));
 	}
 
 	cleanup();
