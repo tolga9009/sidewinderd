@@ -78,14 +78,6 @@ struct sidewinder_data {
 	char *devnode_input;
 } *sw;
 
-/*
- * TODO: remove. Use get_xmlpath() instead.
- */
-struct macro_keys {
-	uint8_t is_pressed;
-	const char *path_to_xml;
-} macro_skey[90];
-
 void handler() {
 	active = 0;
 }
@@ -226,10 +218,7 @@ void setup_config() {
 	int ret, i, j;
 	struct config_setting_t *root, *group, *setting;
 	/* TODO: use string operators for building strings */
-	static const char *cfg_file = "sidewinderd.conf";
-	unsigned char profile_count[] = "profile_1";
-	unsigned char skey_count[] = "S01";
-	unsigned char xml_path[] = "p1/s01.xml";
+	const char *cfg_file = "sidewinderd.conf";
 	cfg = calloc(12, sizeof(struct config_t));
 	config_init(cfg);
 	root = config_root_setting(cfg);
@@ -250,58 +239,11 @@ void setup_config() {
 	setting = config_setting_add(root, "save_profile", CONFIG_TYPE_BOOL);
 	config_setting_set_bool(setting, 0);
 
-	/* setting up config for device */
-	for (i = MIN_PROFILE; i <= MAX_PROFILE; i++) {
-		snprintf(&profile_count[8], 2, "%1d", (i + 1));
-		group = config_setting_add(root, profile_count, CONFIG_TYPE_GROUP);
-
-		for (j = 0; j < sw->max_skeys; j++) {
-			/* formatting skey_count */
-			snprintf(&skey_count[1], 3, "%02d", (j + 1));
-			setting = config_setting_add(group, skey_count, CONFIG_TYPE_STRING);
-
-			/* formatting xml_path */
-			snprintf(&xml_path[1], 2, "%1d", (i + 1));
-			snprintf(&xml_path[2], 3, "%s", "/s");
-			snprintf(&xml_path[4], 3, "%02d", (j + 1));
-			snprintf(&xml_path[6], 5, "%s", ".xml");
-			config_setting_set_string(setting, xml_path);
-		}
-	}
-
 	/* read user config */
 	if (config_read_file(cfg, cfg_file) == CONFIG_FALSE) {
 		/* if no user config is available, write new config */
 		if (config_write_file(cfg, cfg_file) == CONFIG_FALSE) {
-			/* writing new config is not possible due to some reason */
 			/* TODO: error handling */
-		}
-	}
-
-	/*
-	 * TODO: move the code below to load_config()
-	 *
-	 * config read-write has ended, we can use the config now
-	 * assigning xml paths to struct macro_keys macro_skey[]
-	 */
-	for (i = 0; i < sw->max_skeys; i++) {
-		snprintf(&skey_count[1], 3, "%02d", (i + 1));
-		setting = config_setting_add(group, skey_count, CONFIG_TYPE_STRING);
-
-		setting = config_lookup(cfg, "profile_1");
-	}
-
-	/* setting up config for device */
-	for (i = MIN_PROFILE; i <= MAX_PROFILE; i++) {
-		snprintf(&profile_count[8], 2, "%1d", (i + 1));
-		setting = config_lookup(cfg, profile_count);
-
-		/* TODO: count settings with config_setting_length(setting) */
-		for (j = 0; j < sw->max_skeys; j++) {
-			/* formatting skey_count */
-			snprintf(&skey_count[1], 3, "%02d", (j + 1));
-			/* writing xml paths to every unique key's path_to_xml */
-			config_setting_lookup_string(setting, skey_count, &macro_skey[(sw->max_skeys * i) + j].path_to_xml);
 		}
 	}
 }
@@ -313,6 +255,7 @@ void feature_request() {
 	buf[1] = 0x04 << sw->profile;
 	buf[1] |= sw->macropad;
 	buf[1] |= sw->record_led << 5;
+
 	/* reset LEDs on program exit */
 	if (!active) {
 		buf[1] = 0;
@@ -373,9 +316,11 @@ void send_key(uint16_t type, uint16_t code, int32_t value) {
  * TODO: only return latest pressed key, if multiple keys have been
  * pressed at the same time.
  */
-unsigned char get_input(uint8_t nbytes, unsigned char *buf) {
+unsigned char get_input(void) {
 	int i;
-	unsigned char key;
+	unsigned char key, nbytes, buf[MAX_BUF];
+
+	nbytes = read(fd, buf, MAX_BUF);
 
 	if (nbytes == 5 && buf[0] == 8) {
 		/*
@@ -443,13 +388,27 @@ unsigned char get_input(uint8_t nbytes, unsigned char *buf) {
 	return 0;
 }
 
+/*
+ * Returns path to XML, containing macro instructions. asprintf()
+ * allocates memory, so the caller needs to free memory.
+ */
+char *get_xmlpath(unsigned char key) {
+	char *path;
+
+	asprintf(&path, "p%d/s%02d.xml", sw->profile + 1, key);
+
+	return path;
+}
+
 /* TODO: interrupt and exit play_macro when a key is pressed */
 /* BUG: if Bank Switch is pressed during play_macro(), crazy things happen */
-/* TODO: read active_keys and block play_macro, if the key is active */
-void play_macro(int j) {
+/* TODO: block play_macro, if any key has been pressed during execution */
+void play_macro(unsigned char key) {
 	xmlTextReaderPtr reader;
 	int ret;
-	reader = xmlReaderForFile(macro_skey[(sw->profile * sw->max_skeys) + j].path_to_xml, NULL, 0);
+	char *path = get_xmlpath(key);
+	reader = xmlReaderForFile(path, NULL, 0);
+	free(path);
 
 	if (reader != NULL) {
 		ret = xmlTextReaderRead(reader);
@@ -516,10 +475,13 @@ void play_macro(int j) {
  * Macro recording captures delays by default. Use the configuration
  * to disable capturing delays.
  */
+/*
+ * TODO: abort Macro recording, if Record key is pressed again.
+ */
 void record_macro() {
 	uint8_t nbytes;
 	char tmp[10];
-	const char *path;
+	char *path;
 	unsigned char buf[MAX_BUF];
 	int rc, run, i;
 	xmlTextWriterPtr writer;
@@ -534,11 +496,10 @@ void record_macro() {
 	while (active && run) {
 		unsigned char key;
 		epoll_wait(epfd, epev, MAX_EVENTS, -1);
-		nbytes = read(fd, buf, MAX_BUF);
-		key = get_input(nbytes, buf);
+		key = get_input();
 
 		if (key && key < sw->max_skeys) {
-			path = macro_skey[key].path_to_xml;
+			path = get_xmlpath(key);
 			sw->record_led = 2;
 			run = 0;
 			feature_request();
@@ -559,6 +520,7 @@ void record_macro() {
 
 	/* create a new xmlWriter with no compression */
 	writer = xmlNewTextWriterFilename(path, 0);
+	free(path);
 
 	/* activate indentation */
 	rc = xmlTextWriterSetIndent(writer, 1);
@@ -578,9 +540,7 @@ void record_macro() {
 		unsigned char key;
 		epoll_wait(epfd, epev, MAX_EVENTS, -1);
 
-		nbytes = read(fd, buf, MAX_BUF);
-
-		key = get_input(nbytes, buf);
+		key = get_input();
 
 		if (key == sw->max_skeys + 2) {
 			sw->record_led = 0;
@@ -658,8 +618,6 @@ void process_input(unsigned char key) {
 	}
 }
 
-/* TODO: get_xmlpath() */
-
 void cleanup() {
 	/* TODO: check, if save_profile is set and save profile to config */
 
@@ -691,16 +649,10 @@ void cleanup() {
 }
 
 int main(int argc, char **argv) {
-	uint8_t nbytes;
-	unsigned char buf[MAX_BUF];
 	int i;
 	sw = calloc(8, sizeof(struct sidewinder_data));
 
-	/* TODO: move to setup_device() and dynamically allocate needed macro_skeys */
-	for (i = 0; i < 90; i++) {
-		macro_skey[i].is_pressed = 0;
-		macro_skey[i].path_to_xml = 0;
-	}
+	const char * test = NULL;
 
 	signal(SIGINT, handler);
 	signal(SIGHUP, handler);
@@ -728,8 +680,7 @@ int main(int argc, char **argv) {
 		 * epoll_wait() unblocks the loop, because a signal has been
 		 * registered. We use read() to check the signal.
 		 */
-		nbytes = read(fd, buf, MAX_BUF);
-		process_input(get_input(nbytes, buf));
+		process_input(get_input());
 	}
 
 	cleanup();
