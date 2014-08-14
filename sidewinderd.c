@@ -648,11 +648,9 @@ void cleanup() {
 	printf("\nThe almighty Sidewinder daemon has been eliminated\n");
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
 	int i;
 	sw = calloc(8, sizeof(struct sidewinder_data));
-
-	const char * test = NULL;
 
 	signal(SIGINT, handler);
 	signal(SIGHUP, handler);
