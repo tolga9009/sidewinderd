@@ -26,11 +26,14 @@
 #include <csignal>
 #include <iostream>
 
+#include <fcntl.h>
 #include <getopt.h>
 #include <unistd.h>
 
 #include <libconfig.h++>
 
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include <systemd/sd-daemon.h>
@@ -51,6 +54,29 @@ void signal_handler(int signum) {
 		default:
 			std::cout << "Unknown signal received." << std::endl;
 	}
+}
+
+int create_pid() {
+	int pid_fd = open("/var/run/sidewinderd.pid", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	if (pid_fd < 0) {
+		std::cout << "PID file could not be created." << std::endl;
+		return -1;
+	}
+
+	if (flock(pid_fd, LOCK_EX | LOCK_NB) < 0) {
+		std::cout << "Could not lock PID file, another instance is already running. Terminating." << std::endl;
+		close(pid_fd);
+		return -1;
+	}
+
+	return pid_fd;
+}
+
+void close_pid(int pid_fd) {
+	flock(pid_fd, LOCK_UN);
+	close(pid_fd);
+	unlink("/var/run/sidewinderd.pid");
 }
 
 void setup_config() {
@@ -80,6 +106,10 @@ void setup_config() {
 		root.add("capture_delays", libconfig::Setting::TypeBoolean) = true;
 	}
 
+	if (!root.exists("pid-file")) {
+		root.add("pid-file", libconfig::Setting::TypeString) = "/var/run/sidewinderd.pid";
+	}
+
 	if (!root.exists("save_profile")) {
 		root.add("save_profile", libconfig::Setting::TypeBoolean) = false;
 	}
@@ -98,6 +128,12 @@ int main(int argc, char *argv[]) {
 	//signal(SIGHUP, signal_handler);
 	signal(SIGTERM, signal_handler);
 	//signal(SIGKILL, signal_handler);
+
+	int pid_fd = create_pid();
+
+	if (pid_fd < 0) {
+		return EXIT_FAILURE;
+	}
 
 	setup_config();
 
@@ -144,6 +180,8 @@ int main(int argc, char *argv[]) {
 	while (run) {
 		keyboard.listen_key();
 	}
+
+	close_pid(pid_fd);
 
 	return EXIT_SUCCESS;
 }
