@@ -43,8 +43,8 @@
 /* global variables */
 volatile sig_atomic_t run;
 
-void signal_handler(int signum) {
-	switch (signum) {
+void sig_handler(int sig) {
+	switch (sig) {
 		case SIGINT:
 			run = 0;
 			break;
@@ -116,34 +116,33 @@ void setup_config() {
 
 	try {
 		config.writeFile(config_file.c_str());
-		std::cout << "Updated config file" << std::endl;
 	} catch (const libconfig::FileIOException &fioex) {
 		std::cerr << "I/O error while writing file." << std::endl;
 	}
 }
 
 int main(int argc, char *argv[]) {
-	/* TODO: signal() is deprecated, use sigaction() instead */
-	signal(SIGINT, signal_handler);
-	//signal(SIGHUP, signal_handler);
-	signal(SIGTERM, signal_handler);
-	//signal(SIGKILL, signal_handler);
+	/* signal handling */
+	struct sigaction action;
 
+	action.sa_handler = sig_handler;
+
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+
+	/* reading config file */
+	setup_config();
+
+	/* creating pid file for single instance mechanism */
 	int pid_fd = create_pid();
 
 	if (pid_fd < 0) {
 		return EXIT_FAILURE;
 	}
 
-	setup_config();
-
-	/*
-	 * TODO: watch for compatible HID-devices, create new sidewinderd
-	 * kernel thread for each device.
-	 */
 	Keyboard keyboard;
 
-	/* getopt */
+	/* handling command-line options */
 	static struct option long_options[] = {
 		{"daemon", required_argument, 0, 'd'},
 		{"verbose", no_argument, 0, 'v'},
