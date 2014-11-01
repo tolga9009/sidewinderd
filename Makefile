@@ -1,18 +1,16 @@
-CC = gcc
-CFLAGS += $(INCLUDES)
+CXX = clang++
 CXXFLAGS = -Wall -Wextra
-LDFLAGS = -ludev -lconfig $(shell xml2-config --libs)
-INCLUDES = $(shell xml2-config --cflags)
+LDFLAGS = -ludev -lconfig++
 
 HDRS =
-SRCS = sidewinderd.c
-OBJS = $(SRCS:.c=.o)
+SRCS = main.cpp keyboard.cpp tinyxml2.cpp
+OBJS = $(SRCS:.cpp=.o)
 EXEC = sidewinderd
 
 all: $(EXEC)
 
 $(EXEC): $(OBJS)
-	$(CC) $(INCLUDES) $(CXXFLAGS) $(OBJS) $(LDFLAGS) -o $(EXEC)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(LDFLAGS) -o $(EXEC)
 
 clean:
 	rm -f *.o $(EXEC)

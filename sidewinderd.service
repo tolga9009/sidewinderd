@@ -1,9 +1,9 @@
 [Unit]
-Description=Sidewinder daemon
+Description=Handles your Microsoft Sidewinder X4 / X6 gaming keyboards
 
 [Service]
-Type=forking
-ExecStart=/usr/bin/sidewinderd
+ExecStart=/home/tolga/Documents/Git/sidewinderd/sidewinderd
+WorkingDirectory=/home/tolga/Documents/Git/sidewinderd
 
 [Install]
 WantedBy=multi-user.target

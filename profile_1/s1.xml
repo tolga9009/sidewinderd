@@ -1,0 +1,21 @@
+<Macro>
+    <KeyBoardEvent Down="1">42</KeyBoardEvent>
+    <DelayEvent>347</DelayEvent>
+    <KeyBoardEvent Down="1">20</KeyBoardEvent>
+    <DelayEvent>176</DelayEvent>
+    <KeyBoardEvent Down="0">20</KeyBoardEvent>
+    <DelayEvent>199</DelayEvent>
+    <KeyBoardEvent Down="0">42</KeyBoardEvent>
+    <DelayEvent>177</DelayEvent>
+    <KeyBoardEvent Down="1">18</KeyBoardEvent>
+    <DelayEvent>127</DelayEvent>
+    <KeyBoardEvent Down="0">18</KeyBoardEvent>
+    <DelayEvent>83</DelayEvent>
+    <KeyBoardEvent Down="1">31</KeyBoardEvent>
+    <DelayEvent>69</DelayEvent>
+    <KeyBoardEvent Down="1">20</KeyBoardEvent>
+    <DelayEvent>53</DelayEvent>
+    <KeyBoardEvent Down="0">31</KeyBoardEvent>
+    <DelayEvent>29</DelayEvent>
+    <KeyBoardEvent Down="0">20</KeyBoardEvent>
+</Macro>
