@@ -443,10 +443,6 @@ void Keyboard::listen_key() {
 	 * loop. This leads to a very efficient polling mechanism.
 	 */
 	epoll_wait(epfd, &epev, MAX_EVENTS, -1);
-	/*
-	 * epoll_wait() unblocks the loop, because a signal has been
-	 * registered. We use read() to check the signal.
-	 */
 	process_input(get_input());
 }
 
@@ -455,8 +451,6 @@ Keyboard::Keyboard() {
 	auto_led = 0;
 	record_led = 0;
 	macropad = 0;
-
-	std::cout << "Constructor" << std::endl; //debug
 
 	setup_udev();
 
@@ -473,8 +467,6 @@ Keyboard::Keyboard() {
 }
 
 Keyboard::~Keyboard() {
-	std::cout << "Destructor" << std::endl; //debug
-
 	feature_request(0);
 
 	close(uifd);

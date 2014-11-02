@@ -41,15 +41,17 @@
 #include "keyboard.hpp"
 
 /* global variables */
-volatile sig_atomic_t run;
+namespace sidewinderd {
+	volatile sig_atomic_t run;
+};
 
 void sig_handler(int sig) {
 	switch (sig) {
 		case SIGINT:
-			run = 0;
+			sidewinderd::run = 0;
 			break;
 		case SIGTERM:
-			run = 0;
+			sidewinderd::run = 0;
 			break;
 		default:
 			std::cout << "Unknown signal received." << std::endl;
@@ -172,11 +174,11 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	run = 1;
+	sidewinderd::run = 1;
 
 	/* main loop */
 	/* TODO: exit loop, if keyboards gets unplugged */
-	while (run) {
+	while (sidewinderd::run) {
 		keyboard.listen_key();
 	}
 
