@@ -40,9 +40,11 @@ class Keyboard {
 		void toggle_macropad();
 		void switch_profile();
 		void listen_key();
-		Keyboard();
+		Keyboard(int profile, bool capture_delays);
 		~Keyboard();
 	private:
+		std::string user;
+		bool capture_delays;
 		int fd, uifd, epfd, evfd;
 		struct epoll_event epev;
 		struct uinput_user_dev uidev;

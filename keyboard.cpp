@@ -140,11 +140,8 @@ void Keyboard::setup_uidev() {
 		}
 	}
 
-	/*
-	 * TODO: dynamically get and setbit needed keys by play_macro()
-	 *
-	 * Currently, we set all keybits, to make things easier.
-	 */
+	/* TODO: copy original keyboard's keybits. */
+	/* Currently, we set all keybits, to make things easier. */
 	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
 
 	for (i = KEY_ESC; i <= KEY_KPDOT; i++) {
@@ -204,13 +201,12 @@ void Keyboard::switch_profile() {
 }
 
 /*
- * get_input() checks, which keys were pressed. The macro keys are
- * packed in a 5-byte buffer, media keys (including Bank Switch and
- * Record) use 8-bytes.
+ * get_input() checks, which keys were pressed. The macro keys are packed in a
+ * 5-byte buffer, media keys (including Bank Switch and Record) use 8-bytes.
  */
 /*
- * TODO: only return latest pressed key, if multiple keys have been
- * pressed at the same time.
+ * TODO: only return latest pressed key, if multiple keys have been pressed at
+ * the same time.
  */
 int Keyboard::get_input() {
 	int key, nbytes;
@@ -220,11 +216,10 @@ int Keyboard::get_input() {
 
 	if (nbytes == 5 && buf[0] == 8) {
 		/*
-		 * cutting off buf[0], which is used to differentiate between
-		 * macro and media keys. Our task is now to translate the buffer
-		 * codes to something we can work with. Here is a table, where
-		 * you can look up the keys and buffer, if you want to improve
-		 * the current method:
+		 * cutting off buf[0], which is used to differentiate between macro and
+		 * media keys. Our task is now to translate the buffer codes to
+		 * something we can work with. Here is a table, where you can look up
+		 * the keys and buffer, if you want to improve the current method:
 		 *
 		 * S1	0x08 0x01 0x00 0x00 0x00 - buf[1]
 		 * S2	0x08 0x02 0x00 0x00 0x00 - buf[1]
@@ -300,9 +295,8 @@ void Keyboard::send_key(short type, short code, int value) {
 	write(uifd, &inev, sizeof(struct input_event));
 }
 
-/* TODO: interrupt and exit play_macro when a key is pressed */
+/* TODO: interrupt and exit play_macro when any macro_key has been pressed */
 /* BUG(?): if Bank Switch is pressed during play_macro(), crazy things happen */
-/* TODO: block play_macro, if any key has been pressed during execution */
 void Keyboard::play_macro(std::string path) {
 	tinyxml2::XMLDocument doc;
 
@@ -320,9 +314,9 @@ void Keyboard::play_macro(std::string path) {
 			int delay = std::atoi(child->GetText());
 			struct timespec request, remain;
 			/*
-			 * value is given in milliseconds, so we need to split
-			 * it into seconds and nanoseconds. nanosleep() is
-			 * interruptable and saves the remaining sleep time.
+			 * value is given in milliseconds, so we need to split it into
+			 * seconds and nanoseconds. nanosleep() is interruptable and saves
+			 * the remaining sleep time.
 			 */
 			request.tv_sec = delay / 1000;
 			delay = delay - (request.tv_sec * 1000);
@@ -333,8 +327,8 @@ void Keyboard::play_macro(std::string path) {
 }
 
 /*
- * Macro recording captures delays by default. Use the configuration
- * to disable capturing delays.
+ * Macro recording captures delays by default. Use the configuration to disable
+ * capturing delays.
  */
 /*
  * TODO: abort Macro recording, if Record key is pressed again.
@@ -400,8 +394,8 @@ void Keyboard::record_macro() {
 
 		if (inev.type == 1 && inev.value != 2) {
 
-			/* TODO: read config, if capture_delays is true */
-			if (prev.tv_usec) {
+			/* only capturing delays, if capture_delays is set to true */
+			if (prev.tv_usec && capture_delays) {
 				long int diff = (inev.time.tv_usec + 1000000 * inev.time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
 				int delay = diff / 1000;
 
@@ -439,15 +433,16 @@ void Keyboard::record_macro() {
 
 void Keyboard::listen_key() {
 	/*
-	 * epoll_wait() checks our device for any changes and blocks the
-	 * loop. This leads to a very efficient polling mechanism.
+	 * epoll_wait() checks our device for any changes and blocks the loop. This
+	 * leads to a very efficient polling mechanism.
 	 */
 	epoll_wait(epfd, &epev, MAX_EVENTS, -1);
 	process_input(get_input());
 }
 
-Keyboard::Keyboard() {
-	profile = 0;
+Keyboard::Keyboard(int profile, bool capture_delays) {
+	Keyboard::profile = profile - 1;
+	Keyboard::capture_delays = capture_delays;
 	auto_led = 0;
 	record_led = 0;
 	macropad = 0;
@@ -456,7 +451,7 @@ Keyboard::Keyboard() {
 
 	fd = open(devnode_hidraw.c_str(), O_RDWR | O_NONBLOCK);
 
-	/* TODO: throw exception if interface can't be accessed */
+	/* TODO: throw exception if interface can't be accessed, quit sidewinderd */
 	if (fd < 0) {
 		std::cout << "Can't open hidraw interface" << std::endl;
 	}

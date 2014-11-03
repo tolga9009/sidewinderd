@@ -58,8 +58,8 @@ void sig_handler(int sig) {
 	}
 }
 
-int create_pid() {
-	int pid_fd = open("/var/run/sidewinderd.pid", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+int create_pid(std::string pid_file) {
+	int pid_fd = open(pid_file.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	if (pid_fd < 0) {
 		std::cout << "PID file could not be created." << std::endl;
@@ -75,26 +75,24 @@ int create_pid() {
 	return pid_fd;
 }
 
-void close_pid(int pid_fd) {
+void close_pid(int pid_fd, std::string pid_file) {
 	flock(pid_fd, LOCK_UN);
 	close(pid_fd);
-	unlink("/var/run/sidewinderd.pid");
+	unlink(pid_file.c_str());
 }
 
-void setup_config() {
-	libconfig::Config config;
-
+void setup_config(libconfig::Config *config) {
 	std::string config_file("sidewinderd.conf");
 
 	try {
-		config.readFile(config_file.c_str());
+		config->readFile(config_file.c_str());
 	} catch (const libconfig::FileIOException &fioex) {
 		std::cerr << "I/O error while reading file." << std::endl;
 	} catch (const libconfig::ParseException &pex) {
 		std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine() << " - " << pex.getError() << std::endl;
 	}
 
-	libconfig::Setting &root = config.getRoot();
+	libconfig::Setting &root = config->getRoot();
 
 	if (!root.exists("user")) {
 		root.add("user", libconfig::Setting::TypeString) = "nobody";
@@ -117,7 +115,7 @@ void setup_config() {
 	}
 
 	try {
-		config.writeFile(config_file.c_str());
+		config->writeFile(config_file.c_str());
 	} catch (const libconfig::FileIOException &fioex) {
 		std::cerr << "I/O error while writing file." << std::endl;
 	}
@@ -132,17 +130,35 @@ int main(int argc, char *argv[]) {
 	sigaction(SIGINT, &action, NULL);
 	sigaction(SIGTERM, &action, NULL);
 
+	sidewinderd::run = 1;
+
 	/* reading config file */
-	setup_config();
+	libconfig::Config config;
+	setup_config(&config);
+
+	/* TODO: check values for validity and throw exceptions, if invalid */
+	std::string user = config.lookup("user");
+	int profile = config.lookup("profile");
+
+	if (profile > 3) {
+		std::cout << "Invalid profile" << std::endl;
+		sidewinderd::run = 0;
+	}
+
+	bool capture_delays = config.lookup("capture_delays");
+	std::string pid_file = config.lookup("pid-file");
+	bool save_profile = config.lookup("save_profile");
+
+	/* TODO: change directory to getenv("HOME")/<user>/.sidewinderd */
 
 	/* creating pid file for single instance mechanism */
-	int pid_fd = create_pid();
+	int pid_fd = create_pid(pid_file);
 
 	if (pid_fd < 0) {
 		return EXIT_FAILURE;
 	}
 
-	Keyboard keyboard;
+	Keyboard::Keyboard kbd(profile, capture_delays);
 
 	/* handling command-line options */
 	static struct option long_options[] = {
@@ -174,15 +190,17 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	sidewinderd::run = 1;
-
 	/* main loop */
 	/* TODO: exit loop, if keyboards gets unplugged */
 	while (sidewinderd::run) {
-		keyboard.listen_key();
+		kbd.listen_key();
 	}
 
-	close_pid(pid_fd);
+	if (save_profile) {
+		/* TODO: get actual profile and save to config */
+	}
+
+	close_pid(pid_fd, pid_file);
 
 	return EXIT_SUCCESS;
 }
