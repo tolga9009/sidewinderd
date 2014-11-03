@@ -456,6 +456,7 @@ Keyboard::Keyboard() {
 
 	fd = open(devnode_hidraw.c_str(), O_RDWR | O_NONBLOCK);
 
+	/* TODO: throw exception if interface can't be accessed */
 	if (fd < 0) {
 		std::cout << "Can't open hidraw interface" << std::endl;
 	}
