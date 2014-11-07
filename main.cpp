@@ -150,6 +150,7 @@ int main(int argc, char *argv[]) {
 				config_file = optarg;
 				break;
 			case 'd':
+				/* TODO: add optional old fashioned fork() daemon */
 				std::cout << "Option --daemon" << std::endl;
 				break;
 			case 'v':
