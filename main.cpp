@@ -81,9 +81,7 @@ void close_pid(int pid_fd, std::string pid_file) {
 	unlink(pid_file.c_str());
 }
 
-void setup_config(libconfig::Config *config) {
-	std::string config_file("sidewinderd.conf");
-
+void setup_config(libconfig::Config *config, std::string config_file = "/etc/sidewinderd.conf") {
 	try {
 		config->readFile(config_file.c_str());
 	} catch (const libconfig::FileIOException &fioex) {
@@ -132,9 +130,51 @@ int main(int argc, char *argv[]) {
 
 	sidewinderd::run = 1;
 
+	/* handling command-line options */
+	static struct option long_options[] = {
+		{"config", required_argument, 0, 'c'},
+		{"daemon", no_argument, 0, 'd'},
+		{"verbose", no_argument, 0, 'v'},
+		{0, 0, 0, 0}
+	};
+
+	int opt, index;
+	index = 0;
+
+	std::string config_file;
+
+	while ((opt = getopt_long(argc, argv, ":c:dv", long_options, &index)) != -1) {
+		switch (opt) {
+			case 'c':
+				std::cout << "Option --config" << std::endl;
+				config_file = optarg;
+				break;
+			case 'd':
+				std::cout << "Option --daemon" << std::endl;
+				break;
+			case 'v':
+				std::cout << "Option --verbose" << std::endl;
+				break;
+			case ':':
+				std::cout << "Missing argument." << std::endl;
+				break;
+			case '?':
+				std::cout << "Unrecognized option." << std::endl;
+				break;
+			default:
+				std::cout << "Unexpected error." << std::endl;
+				return EXIT_FAILURE;
+		}
+	}
+
 	/* reading config file */
 	libconfig::Config config;
-	setup_config(&config);
+
+	if (config_file.empty()) {
+		setup_config(&config);
+	} else {
+		setup_config(&config, config_file);
+	}
 
 	/* TODO: check values for validity and throw exceptions, if invalid */
 	std::string user = config.lookup("user");
@@ -159,36 +199,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	Keyboard::Keyboard kbd(profile, capture_delays);
-
-	/* handling command-line options */
-	static struct option long_options[] = {
-		{"daemon", required_argument, 0, 'd'},
-		{"verbose", no_argument, 0, 'v'},
-		{0, 0, 0, 0}
-	};
-
-	int opt, index;
-	index = 0;
-
-	while ((opt = getopt_long(argc, argv, ":dv", long_options, &index)) != -1) {
-		switch (opt) {
-			case 'd':
-				std::cout << "Option --daemon" << std::endl;
-				break;
-			case 'v':
-				std::cout << "Option --verbose" << std::endl;
-				break;
-			case ':':
-				std::cout << "Missing argument." << std::endl;
-				break;
-			case '?':
-				std::cout << "Unrecognized option." << std::endl;
-				break;
-			default:
-				std::cout << "Unexpected error." << std::endl;
-				return EXIT_FAILURE;
-		}
-	}
 
 	/* main loop */
 	/* TODO: exit loop, if keyboards gets unplugged */
