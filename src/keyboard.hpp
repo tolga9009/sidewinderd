@@ -27,6 +27,8 @@
 
 #include <string>
 
+#include <libconfig.h++>
+
 #include <linux/uinput.h>
 
 #include <sys/epoll.h>
@@ -40,11 +42,10 @@ class Keyboard {
 		void toggle_macropad();
 		void switch_profile();
 		void listen_key();
-		Keyboard(int profile, bool capture_delays);
+		Keyboard(libconfig::Config *config);
 		~Keyboard();
 	private:
-		std::string user;
-		bool capture_delays;
+		libconfig::Config *config;
 		int fd, uifd, epfd, evfd;
 		struct epoll_event epev;
 		struct uinput_user_dev uidev;

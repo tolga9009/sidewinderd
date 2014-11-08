@@ -28,6 +28,7 @@
 
 #include <fcntl.h>
 #include <getopt.h>
+#include <pwd.h>
 #include <unistd.h>
 
 #include <libconfig.h++>
@@ -92,8 +93,9 @@ void setup_config(libconfig::Config *config, std::string config_file = "/etc/sid
 
 	libconfig::Setting &root = config->getRoot();
 
+	/* TODO: check values for validity and throw exceptions, if invalid */
 	if (!root.exists("user")) {
-		root.add("user", libconfig::Setting::TypeString) = "nobody";
+		root.add("user", libconfig::Setting::TypeString) = "root";
 	}
 
 	if (!root.exists("profile")) {
@@ -106,10 +108,6 @@ void setup_config(libconfig::Config *config, std::string config_file = "/etc/sid
 
 	if (!root.exists("pid-file")) {
 		root.add("pid-file", libconfig::Setting::TypeString) = "/var/run/sidewinderd.pid";
-	}
-
-	if (!root.exists("save_profile")) {
-		root.add("save_profile", libconfig::Setting::TypeBoolean) = false;
 	}
 
 	try {
@@ -177,38 +175,34 @@ int main(int argc, char *argv[]) {
 		setup_config(&config, config_file);
 	}
 
-	/* TODO: check values for validity and throw exceptions, if invalid */
-	std::string user = config.lookup("user");
-	int profile = config.lookup("profile");
-
-	if (profile > 3) {
-		std::cout << "Invalid profile" << std::endl;
-		sidewinderd::run = 0;
-	}
-
-	bool capture_delays = config.lookup("capture_delays");
-	std::string pid_file = config.lookup("pid-file");
-	bool save_profile = config.lookup("save_profile");
-
-	/* TODO: change directory to getenv("HOME")/<user>/.sidewinderd */
-
 	/* creating pid file for single instance mechanism */
+	std::string pid_file = config.lookup("pid-file");
 	int pid_fd = create_pid(pid_file);
 
 	if (pid_fd < 0) {
 		return EXIT_FAILURE;
 	}
 
-	Keyboard kbd(profile, capture_delays);
+	/* get user's home directory */
+	std::string user = config.lookup("user");
+	struct passwd *pw = getpwnam(user.c_str());
+	std::string workdir = pw->pw_dir;
+	workdir.append("/.sidewinderd");
+
+	if (!mkdir(workdir.c_str(), S_IRWXU)) {
+		chown(workdir.c_str(), pw->pw_uid, pw->pw_gid);
+	}
+
+	if (chdir(workdir.c_str())) {
+		std::cout << "Error chdir" << std::endl;
+	}
+
+	Keyboard kbd(&config);
 
 	/* main loop */
 	/* TODO: exit loop, if keyboards gets unplugged */
 	while (sidewinderd::run) {
 		kbd.listen_key();
-	}
-
-	if (save_profile) {
-		/* TODO: get actual profile and save to config */
 	}
 
 	close_pid(pid_fd, pid_file);

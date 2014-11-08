@@ -2,8 +2,7 @@
 Description=Handles your Microsoft Sidewinder X4 / X6 gaming keyboards
 
 [Service]
-ExecStart=/home/tolga/Documents/Git/sidewinderd/sidewinderd
-WorkingDirectory=/home/tolga/Documents/Git/sidewinderd
+ExecStart=/usr/bin/sidewinderd
 
 [Install]
 WantedBy=multi-user.target

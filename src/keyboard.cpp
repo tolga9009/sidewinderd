@@ -122,7 +122,7 @@ std::string Keyboard::get_xmlpath(int key) {
 	std::stringstream path;
 
 	if (key && key < max_skeys) {
-		path << "profile_" << profile + 1 << "/" << "s" << key << ".xml";
+		path << "profile_" << profile + 1 << "_" << "s" << key << ".xml";
 	}
 
 	return path.str();
@@ -395,7 +395,7 @@ void Keyboard::record_macro() {
 		if (inev.type == 1 && inev.value != 2) {
 
 			/* only capturing delays, if capture_delays is set to true */
-			if (prev.tv_usec && capture_delays) {
+			if (prev.tv_usec && config->lookup("capture_delays")) {
 				long int diff = (inev.time.tv_usec + 1000000 * inev.time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
 				int delay = diff / 1000;
 
@@ -422,7 +422,9 @@ void Keyboard::record_macro() {
 	}
 
 	/* write XML document */
-	doc.SaveFile(path.c_str());
+	if (doc.SaveFile(path.c_str())) {
+		std::cout << "Error XML SaveFile" << std::endl;
+	}
 
 	std::cout << "Exit Macro Recording" << std::endl;
 
@@ -440,9 +442,9 @@ void Keyboard::listen_key() {
 	process_input(get_input());
 }
 
-Keyboard::Keyboard(int profile, bool capture_delays) {
-	Keyboard::profile = profile - 1;
-	Keyboard::capture_delays = capture_delays;
+Keyboard::Keyboard(libconfig::Config *config) {
+	Keyboard::config = config;
+	profile = 0;
 	auto_led = 0;
 	record_led = 0;
 	macropad = 0;
@@ -451,7 +453,7 @@ Keyboard::Keyboard(int profile, bool capture_delays) {
 
 	fd = open(devnode_hidraw.c_str(), O_RDWR | O_NONBLOCK);
 
-	/* TODO: throw exception if interface can't be accessed, quit sidewinderd */
+	/* TODO: throw exception if interface can't be accessed, call destructor */
 	if (fd < 0) {
 		std::cout << "Can't open hidraw interface" << std::endl;
 	}
