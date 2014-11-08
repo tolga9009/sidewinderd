@@ -30,13 +30,13 @@
 
 #include <fcntl.h>
 #include <libudev.h>
+#include <tinyxml2.h>
 #include <unistd.h>
 
 #include <linux/hidraw.h>
 
 #include <sys/ioctl.h>
 
-#include "tinyxml2.h"
 #include "keyboard.hpp"
 
 /* constants */

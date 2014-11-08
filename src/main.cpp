@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	Keyboard::Keyboard kbd(profile, capture_delays);
+	Keyboard kbd(profile, capture_delays);
 
 	/* main loop */
 	/* TODO: exit loop, if keyboards gets unplugged */
