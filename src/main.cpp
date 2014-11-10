@@ -22,6 +22,7 @@
  * SOFTWARE.
  */
 
+#include <atomic>
 #include <cstdlib>
 #include <csignal>
 #include <iostream>
@@ -43,16 +44,16 @@
 
 /* global variables */
 namespace sidewinderd {
-	volatile sig_atomic_t run;
+	std::atomic<bool> state;
 };
 
 void sig_handler(int sig) {
 	switch (sig) {
 		case SIGINT:
-			sidewinderd::run = 0;
+			sidewinderd::state = 0;
 			break;
 		case SIGTERM:
-			sidewinderd::run = 0;
+			sidewinderd::state = 0;
 			break;
 		default:
 			std::cout << "Unknown signal received." << std::endl;
@@ -126,7 +127,7 @@ int main(int argc, char *argv[]) {
 	sigaction(SIGINT, &action, NULL);
 	sigaction(SIGTERM, &action, NULL);
 
-	sidewinderd::run = 1;
+	sidewinderd::state = 1;
 
 	/* handling command-line options */
 	static struct option long_options[] = {
@@ -201,7 +202,7 @@ int main(int argc, char *argv[]) {
 
 	/* main loop */
 	/* TODO: exit loop, if keyboards gets unplugged */
-	while (sidewinderd::run) {
+	while (sidewinderd::state) {
 		kbd.listen_key();
 	}
 
