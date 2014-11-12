@@ -38,9 +38,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <systemd/sd-daemon.h>
-
 #include "keyboard.hpp"
+
+/* constants */
+#define VERSION 0.1
 
 /* global variables */
 namespace sidewinderd {
@@ -203,6 +204,8 @@ int main(int argc, char *argv[]) {
 
 	Keyboard kbd(&config, pw);
 
+	std::cout << "Sidewinderd v" << VERSION << " has been started." << std::endl;
+
 	/* main loop */
 	/* TODO: exit loop, if keyboards gets unplugged */
 	while (sidewinderd::state) {
@@ -210,6 +213,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	close_pid(pid_fd, pid_file);
+
+	std::cout << "Sidewinderd has been terminated." << std::endl;
 
 	return EXIT_SUCCESS;
 }

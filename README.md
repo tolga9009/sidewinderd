@@ -7,6 +7,13 @@ Sidewinder daemon - Linux support for Microsoft Sidewinder X4 / X6 keyboards
 Current status
 ==============
 
+Update (12. Nov 2014): I've setup CMake for better supporting all the different
+Linux distros. I have reached a point, where I think, that the software is ready
+for beta testing. Note: this software has only been tested with Arch Linux. If
+there are bugs with different distros, please report the issue via GitHub. I
+will now create an AUR package for sidewinderd. I need your help for other
+distros.
+
 Update (1. Nov 2014): What I currently need is some type of IPC mechanism, so
 the system can talk with sidewinderd. With kdbus just around the corner, I don't
 want to start with dbus. For now, I've implemented a simple PID file mechanism,
@@ -44,6 +51,15 @@ So, there is need for a complete and stable driver for Linux. We're supporting
 both, the Sidewinder X4 and X6 (I have access to both keyboards for testing and
 debugging). Our goal is to reach feature-parity with Microsoft's Windows drivers
 and open up the doors for other, non-Microsoft gaming keyboards and mice.
+
+
+Software dependencies
+=====================
+
+- libconfig 1.4.9 (might also work with earlier versions)
+- systemd (successfully tested with 210 and greater)
+- tinyxml2 2.2.0 (included, until widely available)
+- cmake 3.0 (for building)
 
 
 What's already done?
