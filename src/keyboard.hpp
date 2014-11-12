@@ -27,6 +27,8 @@
 
 #include <string>
 
+#include <pwd.h>
+
 #include <libconfig.h++>
 
 #include <linux/uinput.h>
@@ -42,10 +44,11 @@ class Keyboard {
 		void toggle_macropad();
 		void switch_profile();
 		void listen_key();
-		Keyboard(libconfig::Config *config);
+		Keyboard(libconfig::Config *config, struct passwd *pw);
 		~Keyboard();
 	private:
 		libconfig::Config *config;
+		struct passwd *pw;
 		int fd, uifd, epfd, evfd;
 		struct epoll_event epev;
 		struct uinput_user_dev uidev;

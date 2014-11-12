@@ -187,18 +187,21 @@ int main(int argc, char *argv[]) {
 	/* get user's home directory */
 	std::string user = config.lookup("user");
 	struct passwd *pw = getpwnam(user.c_str());
+
+	/* setting gid and uid to configured user */
+	setegid(pw->pw_gid);
+	seteuid(pw->pw_uid);
+
+	/* creating sidewinderd directory in user's home directory */
 	std::string workdir = pw->pw_dir;
 	workdir.append("/.sidewinderd");
-
-	if (!mkdir(workdir.c_str(), S_IRWXU)) {
-		chown(workdir.c_str(), pw->pw_uid, pw->pw_gid);
-	}
+	mkdir(workdir.c_str(), S_IRWXU);
 
 	if (chdir(workdir.c_str())) {
 		std::cout << "Error chdir" << std::endl;
 	}
 
-	Keyboard kbd(&config);
+	Keyboard kbd(&config, pw);
 
 	/* main loop */
 	/* TODO: exit loop, if keyboards gets unplugged */

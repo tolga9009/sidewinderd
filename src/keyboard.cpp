@@ -122,7 +122,7 @@ std::string Keyboard::get_xmlpath(int key) {
 	std::stringstream path;
 
 	if (key && key < max_skeys) {
-		path << "profile_" << profile + 1 << "_" << "s" << key << ".xml";
+		path << "profile_" << profile + 1 << "/" << "s" << key << ".xml";
 	}
 
 	return path.str();
@@ -130,6 +130,9 @@ std::string Keyboard::get_xmlpath(int key) {
 
 void Keyboard::setup_uidev() {
 	int i;
+
+	/* open uinput device with root privileges */
+	seteuid(0);
 	uifd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 
 	if (uifd < 0) {
@@ -139,6 +142,7 @@ void Keyboard::setup_uidev() {
 			std::cout << "Can't open uinput" << std::endl;
 		}
 	}
+	seteuid(pw->pw_uid);
 
 	/* TODO: copy original keyboard's keybits. */
 	/* Currently, we set all keybits, to make things easier. */
@@ -359,7 +363,9 @@ void Keyboard::record_macro() {
 
 	std::cout << "Start Macro Recording" << std::endl;
 
+	seteuid(0);
 	evfd = open(devnode_input.c_str(), O_RDONLY | O_NONBLOCK);
+	seteuid(pw->pw_uid);
 
 	if (evfd < 0) {
 		std::cout << "Can't open input event file" << std::endl;
@@ -442,16 +448,27 @@ void Keyboard::listen_key() {
 	process_input(get_input());
 }
 
-Keyboard::Keyboard(libconfig::Config *config) {
+Keyboard::Keyboard(libconfig::Config *config, struct passwd *pw) {
 	Keyboard::config = config;
+	Keyboard::pw = pw;
 	profile = 0;
 	auto_led = 0;
 	record_led = 0;
 	macropad = 0;
 
+	for (int i = MIN_PROFILE; i <= MAX_PROFILE; i++) {
+		std::stringstream path;
+
+		path << "profile_" << i + 1;
+		mkdir(path.str().c_str(), S_IRWXU);
+	}
+
 	setup_udev();
 
+	/* open file descriptor with root privileges */
+	seteuid(0);
 	fd = open(devnode_hidraw.c_str(), O_RDWR | O_NONBLOCK);
+	seteuid(pw->pw_uid);
 
 	/* TODO: throw exception if interface can't be accessed, call destructor */
 	if (fd < 0) {
