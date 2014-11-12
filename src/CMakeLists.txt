@@ -1,6 +1,13 @@
-INCLUDE_DIRECTORIES("${sidewinderd_SOURCE_DIR}/lib/tinyxml2")
-LINK_DIRECTORIES("${sidewinderd_SOURCE_DIR}/lib/tinyxml2")
+INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/lib/tinyxml2")
+LINK_DIRECTORIES("${PROJECT_SOURCE_DIR}/lib/tinyxml2")
 
-ADD_EXECUTABLE(sidewinderd main.cpp keyboard.cpp)
+AUX_SOURCE_DIRECTORY(. SOURCE_LIST)
 
-TARGET_LINK_LIBRARIES(sidewinderd tinyxml2 udev config++)
+ADD_EXECUTABLE(${PROJECT_NAME} ${SOURCE_LIST} "${PROJECT_SOURCE_DIR}/etc/sidewinderd.conf" "${PROJECT_SOURCE_DIR}/etc/sidewinderd.service")
+
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} tinyxml2 udev config++)
+
+SET(CMAKE_INSTALL_PREFIX "/usr")
+INSTALL(TARGETS ${PROJECT_NAME} DESTINATION bin)
+INSTALL(FILES "${PROJECT_SOURCE_DIR}/etc/sidewinderd.conf" DESTINATION /etc COMPONENT config)
+INSTALL(FILES "${PROJECT_SOURCE_DIR}/etc/sidewinderd.service" DESTINATION lib/systemd/system)
