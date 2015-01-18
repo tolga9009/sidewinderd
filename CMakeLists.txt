@@ -1,5 +1,4 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8)
-SET(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 ADD_DEFINITIONS(-Wall -Wextra -std=c++11)
 PROJECT(sidewinderd)
 
