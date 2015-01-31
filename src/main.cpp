@@ -84,6 +84,48 @@ void close_pid(int pid_fd, std::string pid_file) {
 	unlink(pid_file.c_str());
 }
 
+int daemonize() {
+	pid_t pid, sid;
+
+	pid = fork();
+
+	if (pid < 0) {
+		std::cout << "Error creating daemon" << std::endl;
+		return -1;
+	}
+
+	if (pid > 0) {
+		return 1;
+	}
+
+	sid = setsid();
+
+	if (sid < 0) {
+		std::cout << "Error setting sid" << std::endl;
+		return -1;
+	}
+
+	pid = fork();
+
+	if (pid < 0) {
+		std::cout << "Error forking second time" << std::endl;
+		return -1;
+	}
+
+	if (pid > 0) {
+		return 1;
+	}
+
+	umask(0);
+	chdir("/");
+
+	close(STDIN_FILENO);
+	close(STDOUT_FILENO);
+	close(STDERR_FILENO);
+
+	return 0;
+}
+
 void setup_config(libconfig::Config *config, std::string config_file = "/etc/sidewinderd.conf") {
 	try {
 		config->readFile(config_file.c_str());
@@ -138,7 +180,7 @@ int main(int argc, char *argv[]) {
 		{0, 0, 0, 0}
 	};
 
-	int opt, index;
+	int opt, index, ret;
 	index = 0;
 
 	std::string config_file;
@@ -146,12 +188,19 @@ int main(int argc, char *argv[]) {
 	while ((opt = getopt_long(argc, argv, ":c:dv", long_options, &index)) != -1) {
 		switch (opt) {
 			case 'c':
-				std::cout << "Option --config" << std::endl;
 				config_file = optarg;
 				break;
 			case 'd':
-				/* TODO: add optional old fashioned fork() daemon */
-				std::cout << "Option --daemon" << std::endl;
+				ret = daemonize();
+
+				if (ret > 0) {
+					return EXIT_SUCCESS;
+				}
+
+				if (ret < 0) {
+					return EXIT_FAILURE;
+				};
+
 				break;
 			case 'v':
 				std::cout << "Option --verbose" << std::endl;
