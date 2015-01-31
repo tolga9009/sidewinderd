@@ -41,7 +41,6 @@
 
 /* constants */
 #define MAX_BUF		8
-#define MAX_EVENTS	2
 #define MIN_PROFILE	0
 #define MAX_PROFILE	2
 #define SIDEWINDER_X6_MAX_SKEYS	30
