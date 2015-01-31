@@ -41,7 +41,7 @@
 #include "keyboard.hpp"
 
 /* constants */
-#define VERSION 0.1
+#define VERSION "0.1.2"
 
 /* global variables */
 namespace sidewinderd {
