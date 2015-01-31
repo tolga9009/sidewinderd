@@ -27,13 +27,12 @@
 
 #include <string>
 
+#include <poll.h>
 #include <pwd.h>
 
 #include <libconfig.h++>
 
 #include <linux/uinput.h>
-
-#include <sys/epoll.h>
 
 class Keyboard {
 	public:
@@ -49,8 +48,8 @@ class Keyboard {
 	private:
 		libconfig::Config *config;
 		struct passwd *pw;
-		int fd, uifd, epfd, evfd;
-		struct epoll_event epev;
+		int fd, uifd, evfd;
+		struct pollfd fds[2];
 		struct uinput_user_dev uidev;
 		int get_input();
 		void process_input(int key);
@@ -58,7 +57,7 @@ class Keyboard {
 		void setup_udev();
 		void setup_uidev();
 		void feature_request(unsigned char data = 0x04);
-		void setup_epoll();
+		void setup_poll();
 		void send_key(short type, short code, int value);
 		void play_macro(std::string path);
 		void record_macro();

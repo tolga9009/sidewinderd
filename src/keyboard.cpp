@@ -107,6 +107,7 @@ void Keyboard::setup_udev() {
 			&& strstr(syspath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
 				devnode_input = strdup(udev_device_get_devnode(dev));
+				std::cout << devnode_input << std::endl;
 		}
 
 		udev_device_unref(dev);
@@ -182,11 +183,13 @@ void Keyboard::feature_request(unsigned char data) {
 	ioctl(fd, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-void Keyboard::setup_epoll() {
-	epfd = epoll_create1(0);
-	epev.data.fd = fd;
-	epev.events = EPOLLIN | EPOLLET;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &epev);
+void Keyboard::setup_poll() {
+	fds[0].fd = fd;
+	fds[0].events = POLLIN;
+
+	/* ignore second fd for now */
+	fds[1].fd = -1;
+	fds[1].events = POLLIN;
 }
 
 void Keyboard::toggle_macropad() {
@@ -350,7 +353,7 @@ void Keyboard::record_macro() {
 
 	while (run) {
 		int key;
-		epoll_wait(epfd, &epev, MAX_EVENTS, -1);
+		poll(fds, 1, -1);
 		key = get_input();
 
 		if (key) {
@@ -371,8 +374,8 @@ void Keyboard::record_macro() {
 		std::cout << "Can't open input event file" << std::endl;
 	}
 
-	/* add /dev/input/event* to epoll watchlist */
-	epoll_ctl(epfd, EPOLL_CTL_ADD, evfd, &epev);
+	/* additionally monitor /dev/input/event* with poll */
+	fds[1].fd = evfd;
 
 	tinyxml2::XMLDocument doc;
 	tinyxml2::XMLNode* root = doc.NewElement("Macro");
@@ -384,7 +387,7 @@ void Keyboard::record_macro() {
 
 	while (run) {
 		int key;
-		epoll_wait(epfd, &epev, MAX_EVENTS, -1);
+		poll(fds, 2, -1);
 
 		key = get_input();
 
@@ -434,17 +437,17 @@ void Keyboard::record_macro() {
 
 	std::cout << "Exit Macro Recording" << std::endl;
 
-	/* remove event file from epoll watchlist */
-	epoll_ctl(epfd, EPOLL_CTL_DEL, evfd, &epev);
+	/* remove event file from poll fds */
+	fds[1].fd = -1;
 	close(evfd);
 }
 
 void Keyboard::listen_key() {
 	/*
-	 * epoll_wait() checks our device for any changes and blocks the loop. This
+	 * poll() checks the device for any activities and blocks the loop. This
 	 * leads to a very efficient polling mechanism.
 	 */
-	epoll_wait(epfd, &epev, MAX_EVENTS, -1);
+	poll(fds, 1, -1);
 	process_input(get_input());
 }
 
@@ -477,7 +480,7 @@ Keyboard::Keyboard(libconfig::Config *config, struct passwd *pw) {
 
 	feature_request();
 
-	setup_epoll();
+	setup_poll();
 	setup_uidev();
 }
 
