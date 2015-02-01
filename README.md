@@ -7,27 +7,15 @@ Sidewinder daemon - Linux support for Microsoft Sidewinder X4 / X6 keyboards
 Current status
 ==============
 
-Update (12. Nov 2014): I've setup CMake for better supporting all the different
-Linux distros. I have reached a point, where I think, that the software is ready
-for beta testing. Note: this software has only been tested with Arch Linux. If
-there are bugs with different distros, please report the issue via GitHub. I
-will now create an AUR package for sidewinderd. I need your help for other
-distros.
-
-Update (1. Nov 2014): What I currently need is some type of IPC mechanism, so
-the system can talk with sidewinderd. With kdbus just around the corner, I don't
-want to start with dbus. For now, I've implemented a simple PID file mechanism,
-so the daemon exits, if any other instance is already running. This will make
-sure, that only a single instance is running at a time to avoid any problems. We
-will mainly need the IPC mechanism for the GUI tool I'm planning. Since I've not
-even started working on it, I think it's okay to wait for now. Major milestones
-are reached; I will start working on cleanups and the TODOs all over the source
-code. I'm also interested in making other, similar hid-devices work this daemon.
-If you're willing to help me or have any other suggestions, please let me know!
+Update (1. Feb 2015): systemd is now an optional dependency (by supporting
+the traditional way of creating a daemon process). Focus is now portability.
+I've also replaced the Linux-only epoll with poll. Next goal is refactoring the
+code to make portability and extensibility easier. Mac OS X support is also a
+goal now. I've scratched the plans for an advanced GUI tool, atleast for now. I
+will keep it simple: it will help creating and managing macros.
 
 You can create new macros by recording them or writing them manually by looking
-up keycodes in linux/input.h. A conversion script for native Microsoft Macros
-will be provided soon.
+up keycodes in linux/input.h.
 
 If you find any bugs, please report by opening up an issue here on GitHub.
 
@@ -56,10 +44,9 @@ and open up the doors for other, non-Microsoft gaming keyboards and mice.
 Software dependencies
 =====================
 
-- libconfig 1.4.9 (might also work with earlier versions)
-- systemd (successfully tested with 210 and greater)
-- tinyxml2 2.2.0 (included, until widely available)
-- cmake 3.0 (for building)
+- cmake 2.8.8 (for building)
+- libconfig 1.4.9
+- tinyxml2 2.2.0
 
 
 What's already done?
@@ -72,7 +59,6 @@ What's already done?
 - Setting LEDs (LED 1-3, Record)
 - X6 only: toggle Macropad between Macro-mode and Numpad-mode
 - Very basic configuration setup
-- Clang++ as default compiler
 
 
 What needs to be done?
@@ -80,7 +66,10 @@ What needs to be done?
 
 - Auto profile and Auto LED support
 - Documentation
-- Qt GUI tool for macro creation, conversion, editing and general configuration
+- Qt GUI tool for macro creation, conversion and editing
+- Mac OS X support
+- FreeBSD support (any help is welcome!)
+- Code refactoring
 
 
 Hey, I want to help!
@@ -94,5 +83,5 @@ about anything else related to this project, like ideas / suggestions.
 Known bugs
 ==========
 
-- When a macro is running and you press Bank Switch key, Record key or Game
-Center key, the driver will go crazy (not confirmed in C++ port)
+- When multiple keyboards are attached, record_macro() may listen to the wrong
+keyboard, leading to empty macro files.
