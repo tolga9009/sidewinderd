@@ -1,25 +1,8 @@
 /*
- * This source file is part of Sidewinder daemon.
+ * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
  *
- * Copyright (c) 2014 Tolga Cakir <tolga@cevel.net>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * This source file is part of Sidewinder daemon and is distributed under the
+ * MIT License. For more information, see LICENSE file.
  */
 
 #include <cstdio>
@@ -51,72 +34,6 @@
 #define MKEY_RECORD			0x11
 #define MKEY_PROFILE		0x14
 
-void Keyboard::setup_udev() {
-	struct udev *udev;
-	struct udev_device *dev;
-	struct udev_enumerate *enumerate;
-	struct udev_list_entry *devices, *dev_list_entry;
-	std::string vid_microsoft("045e");
-	std::string pid_sidewinder_x6("074b");
-	std::string pid_sidewinder_x4("0768");
-
-	udev = udev_new();
-
-	if (!udev) {
-		std::cout << "Can't create udev" << std::endl;
-	}
-
-	enumerate = udev_enumerate_new(udev);
-	udev_enumerate_add_match_subsystem(enumerate, "hidraw");
-	udev_enumerate_add_match_subsystem(enumerate, "input");
-	udev_enumerate_scan_devices(enumerate);
-	devices = udev_enumerate_get_list_entry(enumerate);
-
-	udev_list_entry_foreach(dev_list_entry, devices) {
-		const char *syspath, *devnode_path;
-		syspath = udev_list_entry_get_name(dev_list_entry);
-		dev = udev_device_new_from_syspath(udev, syspath);
-
-		if (strcmp(udev_device_get_subsystem(dev), "hidraw") == 0) {
-			devnode_path = udev_device_get_devnode(dev);
-			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
-
-			if (!dev) {
-				std::cout << "Unable to find parent device" << std::endl;
-			}
-
-			if (strcmp(udev_device_get_sysattr_value(dev, "bInterfaceNumber"), "01") == 0) {
-				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
-
-				if (strcmp(udev_device_get_sysattr_value(dev, "idVendor"), vid_microsoft.c_str()) == 0) {
-					if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x6.c_str()) == 0) {
-						devnode_hidraw = strdup(devnode_path);
-						max_skeys = SIDEWINDER_X6_MAX_SKEYS;
-					} else if (strcmp(udev_device_get_sysattr_value(dev, "idProduct"), pid_sidewinder_x4.c_str()) == 0) {
-						devnode_hidraw = strdup(devnode_path);
-						max_skeys = SIDEWINDER_X4_MAX_SKEYS;
-					}
-				}
-			}
-		}
-
-		/* find correct /dev/input/event* file */
-		if (strcmp(udev_device_get_subsystem(dev), "input") == 0
-			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
-			&& strstr(syspath, "event")
-			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
-				devnode_input = strdup(udev_device_get_devnode(dev));
-				std::cout << devnode_input << std::endl;
-		}
-
-		udev_device_unref(dev);
-	}
-
-	/* free the enumerator object */
-	udev_enumerate_unref(enumerate);
-	udev_unref(udev);
-}
-
 /* Returns path to XML, containing macro instructions. */
 std::string Keyboard::get_xmlpath(int key) {
 	std::stringstream path;
@@ -126,49 +43,6 @@ std::string Keyboard::get_xmlpath(int key) {
 	}
 
 	return path.str();
-}
-
-void Keyboard::setup_uidev() {
-	int i;
-
-	/* open uinput device with root privileges */
-	seteuid(0);
-	uifd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-
-	if (uifd < 0) {
-		uifd = open("/dev/input/uinput", O_WRONLY | O_NONBLOCK);
-
-		if (uifd < 0) {
-			std::cout << "Can't open uinput" << std::endl;
-		}
-	}
-	seteuid(pw->pw_uid);
-
-	/* TODO: copy original keyboard's keybits. */
-	/* Currently, we set all keybits, to make things easier. */
-	ioctl(uifd, UI_SET_EVBIT, EV_KEY);
-
-	for (i = KEY_ESC; i <= KEY_KPDOT; i++) {
-		ioctl(uifd, UI_SET_KEYBIT, i);
-	}
-
-	for (i = KEY_ZENKAKUHANKAKU; i <= KEY_F24; i++) {
-		ioctl(uifd, UI_SET_KEYBIT, i);
-	}
-
-	for (i = KEY_PLAYCD; i <= KEY_MICMUTE; i++) {
-		ioctl(uifd, UI_SET_KEYBIT, i);
-	}
-
-	/* our uinput device's details */
-	/* TODO: read keyboard information via udev and set config here */
-	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
-	uidev.id.bustype = BUS_USB;
-	uidev.id.vendor = 0x1;
-	uidev.id.product = 0x1;
-	uidev.id.version = 1;
-	write(uifd, &uidev, sizeof(struct uinput_user_dev));
-	ioctl(uifd, UI_DEV_CREATE);
 }
 
 void Keyboard::feature_request(unsigned char data) {
@@ -287,22 +161,7 @@ void Keyboard::process_input(int key) {
 	}
 }
 
-void Keyboard::send_key(short type, short code, int value) {
-	struct input_event inev;
-
-	inev.type = type;
-	inev.code = code;
-	inev.value = value;
-	write(uifd, &inev, sizeof(struct input_event));
-
-	inev.type = EV_SYN;
-	inev.code = 0;
-	inev.value = 0;
-	write(uifd, &inev, sizeof(struct input_event));
-}
-
 /* TODO: interrupt and exit play_macro when any macro_key has been pressed */
-/* BUG(?): if Bank Switch is pressed during play_macro(), crazy things happen */
 void Keyboard::play_macro(std::string path) {
 	tinyxml2::XMLDocument doc;
 
@@ -315,7 +174,8 @@ void Keyboard::play_macro(std::string path) {
 			int key = std::atoi(child->GetText());
 
 			child->QueryBoolAttribute("Down", &boolDown);
-			send_key(EV_KEY, key, boolDown);
+			printf("%p\n", &virtinput);
+			virtinput->send_event(EV_KEY, key, boolDown);
 		} else if (child->Name() == std::string("DelayEvent")) {
 			int delay = std::atoi(child->GetText());
 			struct timespec request, remain;
@@ -366,7 +226,7 @@ void Keyboard::record_macro() {
 	std::cout << "Start Macro Recording" << std::endl;
 
 	seteuid(0);
-	evfd = open(devnode_input.c_str(), O_RDONLY | O_NONBLOCK);
+	evfd = open(devnode_input_event.c_str(), O_RDONLY | O_NONBLOCK);
 	seteuid(pw->pw_uid);
 
 	if (evfd < 0) {
@@ -450,13 +310,18 @@ void Keyboard::listen_key() {
 	process_input(get_input());
 }
 
-Keyboard::Keyboard(libconfig::Config *config, struct passwd *pw) {
+Keyboard::Keyboard(std::string devnode_hidraw, std::string devnode_input_event, libconfig::Config *config, struct passwd *pw) {
 	Keyboard::config = config;
 	Keyboard::pw = pw;
+	Keyboard::devnode_hidraw = devnode_hidraw;
+	Keyboard::devnode_input_event = devnode_input_event;
+	Keyboard::virtinput = new VirtualInput(pw);
 	profile = 0;
 	auto_led = 0;
 	record_led = 0;
 	macropad = 0;
+
+	max_skeys = SIDEWINDER_X6_MAX_SKEYS; /* messed up right now */
 
 	for (int i = MIN_PROFILE; i <= MAX_PROFILE; i++) {
 		std::stringstream path;
@@ -464,8 +329,6 @@ Keyboard::Keyboard(libconfig::Config *config, struct passwd *pw) {
 		path << "profile_" << i + 1;
 		mkdir(path.str().c_str(), S_IRWXU);
 	}
-
-	setup_udev();
 
 	/* open file descriptor with root privileges */
 	seteuid(0);
@@ -480,12 +343,10 @@ Keyboard::Keyboard(libconfig::Config *config, struct passwd *pw) {
 	feature_request();
 
 	setup_poll();
-	setup_uidev();
 }
 
 Keyboard::~Keyboard() {
+	delete virtinput;
 	feature_request(0);
-
-	close(uifd);
 	close(fd);
 }

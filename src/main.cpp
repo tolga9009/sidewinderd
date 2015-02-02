@@ -1,31 +1,16 @@
 /*
- * This source file is part of Sidewinder daemon.
+ * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
  *
- * Copyright (c) 2014 Tolga Cakir <tolga@cevel.net>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * This source file is part of Sidewinder daemon and is distributed under the
+ * MIT License. For more information, see LICENSE file.
  */
 
 #include <atomic>
 #include <cstdlib>
 #include <csignal>
 #include <iostream>
+#include <utility>
+#include <vector>
 
 #include <fcntl.h>
 #include <getopt.h>
@@ -38,7 +23,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "device_handler.hpp"
 #include "keyboard.hpp"
+#include "virtual_input.hpp"
 
 /* constants */
 #define VERSION "0.1.2"
@@ -46,6 +33,11 @@
 /* global variables */
 namespace sidewinderd {
 	std::atomic<bool> state;
+
+	std::vector<std::pair<std::string, std::string>> devices = {
+		{"045e", "074b"},	/* Microsoft Sidewinder X6 */
+		{"045e", "0768"}	/* Microsoft Sidewinder X4 */
+	};
 };
 
 void sig_handler(int sig) {
@@ -251,14 +243,22 @@ int main(int argc, char *argv[]) {
 		std::cout << "Error chdir" << std::endl;
 	}
 
-	Keyboard kbd(&config, pw);
-
 	std::cout << "Sidewinderd v" << VERSION << " has been started." << std::endl;
 
-	/* main loop */
-	/* TODO: exit loop, if keyboards gets unplugged */
-	while (sidewinderd::state) {
-		kbd.listen_key();
+	DeviceHandler device_handler;
+
+	for (std::vector<std::pair<std::string, std::string>>::iterator it = sidewinderd::devices.begin(); it != sidewinderd::devices.end(); ++it) {
+		device_handler.search_device(it->first, it->second);
+
+		if (device_handler.found) {
+			Keyboard kbd(device_handler.devnode_hidraw, device_handler.devnode_input_event, &config, pw);
+
+			/* main loop */
+			/* TODO: exit loop, if keyboards gets unplugged */
+			while (sidewinderd::state) {
+				kbd.listen_key();
+			}
+		}
 	}
 
 	close_pid(pid_fd, pid_file);
