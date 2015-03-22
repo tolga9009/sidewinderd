@@ -70,6 +70,10 @@ void DeviceHandler::udev(std::string vid, std::string pid) {
 
 		/* find correct /dev/input/event* file */
 		if (strcmp(udev_device_get_subsystem(dev), "input") == 0
+			&& udev_device_get_property_value(dev, "ID_MODEL_ID") != NULL
+			&& strcmp(udev_device_get_property_value(dev, "ID_MODEL_ID"), pid.c_str()) == 0
+			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
+			&& strcmp(udev_device_get_property_value(dev, "ID_VENDOR_ID"), vid.c_str()) == 0
 			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
 			&& strstr(syspath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {

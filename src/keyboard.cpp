@@ -223,7 +223,7 @@ void Keyboard::record_macro() {
 		}
 	}
 
-	std::cout << "Start Macro Recording" << std::endl;
+	std::cout << "Start Macro Recording on " << devnode_input_event << std::endl;
 
 	seteuid(0);
 	evfd = open(devnode_input_event.c_str(), O_RDONLY | O_NONBLOCK);
