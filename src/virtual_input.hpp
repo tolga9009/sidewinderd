@@ -8,8 +8,6 @@
 #ifndef VIRTUALINPUT_CLASS_H
 #define VIRTUALINPUT_CLASS_H
 
-#include <string>
-
 #include <pwd.h>
 
 #include <linux/uinput.h>

@@ -6,19 +6,18 @@
  */
 
 #include <cstdio>
-#include <cstring>
 #include <ctime>
 #include <iostream>
 #include <sstream>
 
 #include <fcntl.h>
-#include <libudev.h>
 #include <tinyxml2.h>
 #include <unistd.h>
 
 #include <linux/hidraw.h>
 
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #include "keyboard.hpp"
 

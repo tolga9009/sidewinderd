@@ -76,7 +76,6 @@ VirtualInput::VirtualInput(struct passwd *pw) {
 
 	/* for Linux */
 	create_uidev();
-	std::cout << "VirtInput created" << std::endl;
 }
 
 VirtualInput::~VirtualInput() {

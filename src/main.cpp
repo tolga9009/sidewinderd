@@ -5,15 +5,14 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#include <atomic>
 #include <cstdlib>
 #include <csignal>
-#include <iostream>
-#include <utility>
-#include <vector>
+#include <cstring>
+#include <sstream>
 
 #include <fcntl.h>
 #include <getopt.h>
+#include <libudev.h>
 #include <pwd.h>
 #include <unistd.h>
 
@@ -23,22 +22,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "device_handler.hpp"
 #include "keyboard.hpp"
+#include "main.hpp"
 #include "virtual_input.hpp"
-
-/* constants */
-#define VERSION "0.1.2"
-
-/* global variables */
-namespace sidewinderd {
-	std::atomic<bool> state;
-
-	std::vector<std::pair<std::string, std::string>> devices = {
-		{"045e", "074b"},	/* Microsoft Sidewinder X6 */
-		{"045e", "0768"}	/* Microsoft Sidewinder X4 */
-	};
-};
 
 void sig_handler(int sig) {
 	switch (sig) {
@@ -153,6 +139,75 @@ void setup_config(libconfig::Config *config, std::string config_file = "/etc/sid
 	}
 }
 
+int search_device(std::string vid, std::string pid) {
+	struct udev *udev;
+	struct udev_device *dev;
+	struct udev_enumerate *enumerate;
+	struct udev_list_entry *devices, *dev_list_entry;
+	int found = 0;
+
+	udev = udev_new();
+
+	if (!udev) {
+		std::cout << "Can't create udev" << std::endl;
+
+		return -1;
+	}
+
+	enumerate = udev_enumerate_new(udev);
+	udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+	udev_enumerate_add_match_subsystem(enumerate, "input");
+	udev_enumerate_scan_devices(enumerate);
+	devices = udev_enumerate_get_list_entry(enumerate);
+
+	udev_list_entry_foreach(dev_list_entry, devices) {
+		const char *syspath, *devnode_path;
+		syspath = udev_list_entry_get_name(dev_list_entry);
+		dev = udev_device_new_from_syspath(udev, syspath);
+
+		if (std::string(udev_device_get_subsystem(dev)) == std::string("hidraw")) {
+			devnode_path = udev_device_get_devnode(dev);
+			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
+
+			if (!dev) {
+				std::cout << "Unable to find parent device" << std::endl;
+			}
+
+			if (std::string(udev_device_get_sysattr_value(dev, "bInterfaceNumber")) == std::string("01")) {
+				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+
+				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == vid) {
+					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == pid) {
+						std::cout << "Found device: " << vid << ":" << pid << std::endl;
+						found = 1;
+						sidewinderd::devnode_hidraw = devnode_path;
+					}
+				}
+			}
+		}
+
+		/* find correct /dev/input/event* file */
+		if (std::string(udev_device_get_subsystem(dev)) == std::string("input")
+			&& udev_device_get_property_value(dev, "ID_MODEL_ID") != NULL
+			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == pid
+			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
+			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == vid
+			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
+			&& strstr(syspath, "event")
+			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
+				sidewinderd::devnode_input_event = udev_device_get_devnode(dev);
+		}
+
+		udev_device_unref(dev);
+	}
+
+	/* free the enumerator object */
+	udev_enumerate_unref(enumerate);
+	udev_unref(udev);
+
+	return found;
+}
+
 int main(int argc, char *argv[]) {
 	/* signal handling */
 	struct sigaction action;
@@ -243,15 +298,12 @@ int main(int argc, char *argv[]) {
 		std::cout << "Error chdir" << std::endl;
 	}
 
-	std::cout << "Sidewinderd v" << VERSION << " has been started." << std::endl;
-
-	DeviceHandler device_handler;
+	std::cout << "Sidewinderd v" << sidewinderd::version << " has been started." << std::endl;
 
 	for (std::vector<std::pair<std::string, std::string>>::iterator it = sidewinderd::devices.begin(); it != sidewinderd::devices.end(); ++it) {
-		device_handler.search_device(it->first, it->second);
 
-		if (device_handler.found) {
-			Keyboard kbd(device_handler.devnode_hidraw, device_handler.devnode_input_event, &config, pw);
+		if (search_device(it->first, it->second) > 0) {
+			Keyboard kbd(sidewinderd::devnode_hidraw, sidewinderd::devnode_input_event, &config, pw);
 
 			/* main loop */
 			/* TODO: exit loop, if keyboards gets unplugged */

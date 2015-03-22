@@ -35,7 +35,6 @@ class Keyboard {
 		int get_input();
 		void process_input(int key);
 		std::string get_xmlpath(int key);
-		void setup_udev();
 		void feature_request(unsigned char data = 0x04);
 		void setup_poll();
 		void play_macro(std::string path);
