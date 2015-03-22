@@ -174,7 +174,6 @@ void Keyboard::play_macro(std::string path) {
 			int key = std::atoi(child->GetText());
 
 			child->QueryBoolAttribute("Down", &boolDown);
-			printf("%p\n", &virtinput);
 			virtinput->send_event(EV_KEY, key, boolDown);
 		} else if (child->Name() == std::string("DelayEvent")) {
 			int delay = std::atoi(child->GetText());

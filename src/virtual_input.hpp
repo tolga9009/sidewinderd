@@ -22,7 +22,7 @@ class VirtualInput {
 	private:
 		int uifd;
 		struct passwd *pw;
-		struct uinput_user_dev uidev;
+		struct uinput_user_dev *uidev;
 		void create_uidev();
 };
 
