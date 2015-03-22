@@ -19,13 +19,11 @@
 
 class Keyboard {
 	public:
-		int profile, auto_led, record_led, max_skeys, macropad;
-		void toggle_macropad();
-		void switch_profile();
-		void listen_key();
+		void listen();
 		Keyboard(std::string devnode_hidraw, std::string devnode_input_event, libconfig::Config *config, struct passwd *pw);
 		~Keyboard();
 	private:
+		int profile, auto_led, record_led, macropad, max_skeys;
 		int fd, evfd;
 		struct passwd *pw;
 		struct pollfd fds[2];
@@ -39,6 +37,8 @@ class Keyboard {
 		void setup_poll();
 		void play_macro(std::string path);
 		void record_macro();
+		void toggle_macropad();
+		void switch_profile();
 };
 
 #endif

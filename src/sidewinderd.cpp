@@ -23,7 +23,7 @@
 #include <sys/types.h>
 
 #include "keyboard.hpp"
-#include "main.hpp"
+#include "sidewinderd.hpp"
 #include "virtual_input.hpp"
 
 void sig_handler(int sig) {
@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
 			/* main loop */
 			/* TODO: exit loop, if keyboards gets unplugged */
 			while (sidewinderd::state) {
-				kbd.listen_key();
+				kbd.listen();
 			}
 		}
 	}

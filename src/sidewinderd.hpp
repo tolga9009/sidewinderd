@@ -5,8 +5,8 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#ifndef SIDEWINDERD_MAIN_H
-#define SIDEWINDERD_MAIN_H
+#ifndef SIDEWINDERD_H
+#define SIDEWINDERD_H
 
 #include <atomic>
 #include <iostream>

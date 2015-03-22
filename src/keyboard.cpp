@@ -299,7 +299,7 @@ void Keyboard::record_macro() {
 	close(evfd);
 }
 
-void Keyboard::listen_key() {
+void Keyboard::listen() {
 	/*
 	 * poll() checks the device for any activities and blocks the loop. This
 	 * leads to a very efficient polling mechanism.
