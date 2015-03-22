@@ -72,13 +72,13 @@ void VirtualInput::send_event(short type, short code, int value) {
 
 VirtualInput::VirtualInput(struct passwd *pw) {
 	VirtualInput::pw = pw;
-	VirtualInput::uidev = new struct uinput_user_dev;
+	struct uinput_user_dev uidev;
+	VirtualInput::uidev = &uidev;
 
 	/* for Linux */
 	create_uidev();
 }
 
 VirtualInput::~VirtualInput() {
-	delete uidev;
 	close(uifd);
 }
