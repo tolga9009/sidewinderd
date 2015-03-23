@@ -10,8 +10,6 @@
 
 #include <pwd.h>
 
-#include <linux/uinput.h>
-
 class VirtualInput {
 	public:
 		void send_event(short type, short code, int value);
@@ -20,7 +18,6 @@ class VirtualInput {
 	private:
 		int uifd;
 		struct passwd *pw;
-		struct uinput_user_dev *uidev;
 		void create_uidev();
 };
 

@@ -11,6 +11,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <linux/uinput.h>
+
 #include <sys/ioctl.h>
 
 #include "virtual_input.hpp"
@@ -45,13 +47,15 @@ void VirtualInput::create_uidev() {
 		ioctl(uifd, UI_SET_KEYBIT, i);
 	}
 
+	struct uinput_user_dev uidev = {};
+
 	/* our uinput device's details */
 	/* TODO: read keyboard information and set here */
-	snprintf(uidev->name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
-	uidev->id.bustype = BUS_USB;
-	uidev->id.vendor = 0x1;
-	uidev->id.product = 0x1;
-	uidev->id.version = 1;
+	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
+	uidev.id.bustype = BUS_USB;
+	uidev.id.vendor = 0x1;
+	uidev.id.product = 0x1;
+	uidev.id.version = 1;
 	write(uifd, &uidev, sizeof(struct uinput_user_dev));
 	ioctl(uifd, UI_DEV_CREATE);
 }
@@ -72,8 +76,6 @@ void VirtualInput::send_event(short type, short code, int value) {
 
 VirtualInput::VirtualInput(struct passwd *pw) {
 	VirtualInput::pw = pw;
-	struct uinput_user_dev uidev;
-	VirtualInput::uidev = &uidev;
 
 	/* for Linux */
 	create_uidev();

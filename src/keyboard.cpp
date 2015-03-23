@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include <linux/hidraw.h>
+#include <linux/input.h>
 
 #include <sys/ioctl.h>
 #include <sys/stat.h>
