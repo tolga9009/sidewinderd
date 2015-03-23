@@ -50,7 +50,6 @@ void VirtualInput::create_uidev() {
 	struct uinput_user_dev uidev = {};
 
 	/* our uinput device's details */
-	/* TODO: read keyboard name and set here */
 	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "Sidewinderd");
 	uidev.id.bustype = BUS_USB;
 	uidev.id.vendor = std::stoi(data->vid, nullptr, 16);
