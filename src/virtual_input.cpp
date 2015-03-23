@@ -50,11 +50,11 @@ void VirtualInput::create_uidev() {
 	struct uinput_user_dev uidev = {};
 
 	/* our uinput device's details */
-	/* TODO: read keyboard information and set here */
-	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "sidewinderd");
+	/* TODO: read keyboard name and set here */
+	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "Sidewinderd");
 	uidev.id.bustype = BUS_USB;
-	uidev.id.vendor = 0x1;
-	uidev.id.product = 0x1;
+	uidev.id.vendor = std::stoi(data->vid, nullptr, 16);
+	uidev.id.product = std::stoi(data->pid, nullptr, 16);
 	uidev.id.version = 1;
 	write(uifd, &uidev, sizeof(struct uinput_user_dev));
 	ioctl(uifd, UI_DEV_CREATE);
@@ -74,8 +74,9 @@ void VirtualInput::send_event(short type, short code, int value) {
 	write(uifd, &inev, sizeof(struct input_event));
 }
 
-VirtualInput::VirtualInput(struct passwd *pw) {
+VirtualInput::VirtualInput(sidewinderd::DeviceData *data, struct passwd *pw) {
 	VirtualInput::pw = pw;
+	VirtualInput::data = data;
 
 	/* for Linux */
 	create_uidev();

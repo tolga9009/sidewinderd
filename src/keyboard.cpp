@@ -222,10 +222,10 @@ void Keyboard::record_macro() {
 		}
 	}
 
-	std::cout << "Start Macro Recording on " << devnode_input_event << std::endl;
+	std::cout << "Start Macro Recording on " << data->devnode.input_event << std::endl;
 
 	seteuid(0);
-	evfd = open(devnode_input_event.c_str(), O_RDONLY | O_NONBLOCK);
+	evfd = open(data->devnode.input_event.c_str(), O_RDONLY | O_NONBLOCK);
 	seteuid(pw->pw_uid);
 
 	if (evfd < 0) {
@@ -309,12 +309,11 @@ void Keyboard::listen() {
 	process_input(get_input());
 }
 
-Keyboard::Keyboard(std::string devnode_hidraw, std::string devnode_input_event, libconfig::Config *config, struct passwd *pw) {
+Keyboard::Keyboard(struct sidewinderd::DeviceData *data, libconfig::Config *config, struct passwd *pw) {
 	Keyboard::config = config;
 	Keyboard::pw = pw;
-	Keyboard::devnode_hidraw = devnode_hidraw;
-	Keyboard::devnode_input_event = devnode_input_event;
-	Keyboard::virtinput = new VirtualInput(pw);
+	Keyboard::data = data;
+	Keyboard::virtinput = new VirtualInput(data, pw);
 	profile = 0;
 	auto_led = 0;
 	record_led = 0;
@@ -331,7 +330,7 @@ Keyboard::Keyboard(std::string devnode_hidraw, std::string devnode_input_event, 
 
 	/* open file descriptor with root privileges */
 	seteuid(0);
-	fd = open(devnode_hidraw.c_str(), O_RDWR | O_NONBLOCK);
+	fd = open(data->devnode.hidraw.c_str(), O_RDWR | O_NONBLOCK);
 	seteuid(pw->pw_uid);
 
 	/* TODO: throw exception if interface can't be accessed, call destructor */

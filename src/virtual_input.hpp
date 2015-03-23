@@ -10,14 +10,17 @@
 
 #include <pwd.h>
 
+#include "device_data.hpp"
+
 class VirtualInput {
 	public:
 		void send_event(short type, short code, int value);
-		VirtualInput(struct passwd *pw);
+		VirtualInput(sidewinderd::DeviceData *data, struct passwd *pw);
 		~VirtualInput();
 	private:
 		int uifd;
 		struct passwd *pw;
+		sidewinderd::DeviceData *data;
 		void create_uidev();
 };
 

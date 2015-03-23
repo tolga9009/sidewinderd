@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "device_data.hpp"
 #include "keyboard.hpp"
 #include "sidewinderd.hpp"
 #include "virtual_input.hpp"
@@ -139,7 +140,7 @@ void setup_config(libconfig::Config *config, std::string config_file = "/etc/sid
 	}
 }
 
-int search_device(std::string vid, std::string pid) {
+int search_device(struct sidewinderd::DeviceData *data) {
 	struct udev *udev;
 	struct udev_device *dev;
 	struct udev_enumerate *enumerate;
@@ -176,11 +177,11 @@ int search_device(std::string vid, std::string pid) {
 			if (std::string(udev_device_get_sysattr_value(dev, "bInterfaceNumber")) == std::string("01")) {
 				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
 
-				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == vid) {
-					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == pid) {
-						std::cout << "Found device: " << vid << ":" << pid << std::endl;
+				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == data->vid) {
+					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == data->pid) {
+						std::cout << "Found device: " << data->vid << ":" << data->pid << std::endl;
 						found = 1;
-						sidewinderd::devnode_hidraw = devnode_path;
+						data->devnode.hidraw = devnode_path;
 					}
 				}
 			}
@@ -189,13 +190,13 @@ int search_device(std::string vid, std::string pid) {
 		/* find correct /dev/input/event* file */
 		if (std::string(udev_device_get_subsystem(dev)) == std::string("input")
 			&& udev_device_get_property_value(dev, "ID_MODEL_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == pid
+			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == data->pid
 			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == vid
+			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == data->vid
 			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
 			&& strstr(syspath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
-				sidewinderd::devnode_input_event = udev_device_get_devnode(dev);
+				data->devnode.input_event = udev_device_get_devnode(dev);
 		}
 
 		udev_device_unref(dev);
@@ -301,9 +302,12 @@ int main(int argc, char *argv[]) {
 	std::cout << "Sidewinderd v" << sidewinderd::version << " has been started." << std::endl;
 
 	for (std::vector<std::pair<std::string, std::string>>::iterator it = sidewinderd::devices.begin(); it != sidewinderd::devices.end(); ++it) {
+		struct sidewinderd::DeviceData data;
+		data.vid = it->first;
+		data.pid = it->second;
 
-		if (search_device(it->first, it->second) > 0) {
-			Keyboard kbd(sidewinderd::devnode_hidraw, sidewinderd::devnode_input_event, &config, pw);
+		if (search_device(&data) > 0) {
+			Keyboard kbd(&data, &config, pw);
 
 			/* main loop */
 			/* TODO: exit loop, if keyboards gets unplugged */

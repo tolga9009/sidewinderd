@@ -23,8 +23,6 @@ namespace sidewinderd {
 		{"045e", "074b"},	/* Microsoft Sidewinder X6 */
 		{"045e", "0768"}	/* Microsoft Sidewinder X4 */
 	};
-
-	std::string devnode_hidraw, devnode_input_event;
 };
 
 #endif

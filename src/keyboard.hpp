@@ -15,20 +15,21 @@
 
 #include <libconfig.h++>
 
+#include "device_data.hpp"
 #include "virtual_input.hpp"
 
 class Keyboard {
 	public:
 		void listen();
-		Keyboard(std::string devnode_hidraw, std::string devnode_input_event, libconfig::Config *config, struct passwd *pw);
+		Keyboard(sidewinderd::DeviceData *data, libconfig::Config *config, struct passwd *pw);
 		~Keyboard();
 	private:
 		int profile, auto_led, record_led, macropad, max_skeys;
 		int fd, evfd;
 		struct passwd *pw;
 		struct pollfd fds[2];
-		std::string devnode_hidraw, devnode_input_event;
 		libconfig::Config *config;
+		sidewinderd::DeviceData *data;
 		VirtualInput *virtinput;
 		int get_input();
 		void process_input(int key);
