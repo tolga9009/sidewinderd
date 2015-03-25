@@ -9,6 +9,7 @@
 #include <ctime>
 #include <iostream>
 #include <sstream>
+#include <thread>
 
 #include <fcntl.h>
 #include <tinyxml2.h>
@@ -149,27 +150,17 @@ int Keyboard::get_input() {
 	return 0;
 }
 
-void Keyboard::process_input(int key) {
-	if (key == max_skeys + MKEY_GAMECENTER) {
-		toggle_macropad();
-	} else if (key == max_skeys + MKEY_RECORD) {
-		record_macro();
-	} else if (key == max_skeys + MKEY_PROFILE) {
-		switch_profile();
-	} else if (key) {
-		play_macro(get_xmlpath(key));
-	}
-}
-
 /* TODO: interrupt and exit play_macro when any macro_key has been pressed */
-void Keyboard::play_macro(std::string path) {
+void Keyboard::play_macro(std::string path, VirtualInput *virtinput, std::atomic<bool> *macro_execution) {
 	tinyxml2::XMLDocument doc;
 
 	doc.LoadFile(path.c_str());
 	tinyxml2::XMLElement* root = doc.FirstChildElement("Macro");
 
 	for (tinyxml2::XMLElement* child = root->FirstChildElement(); child; child = child->NextSiblingElement()) {
-		if (child->Name() == std::string("KeyBoardEvent")) {
+		if (*macro_execution == false) {
+			continue;
+		} else if (child->Name() == std::string("KeyBoardEvent")) {
 			bool boolDown;
 			int key = std::atoi(child->GetText());
 
@@ -189,6 +180,8 @@ void Keyboard::play_macro(std::string path) {
 			nanosleep(&request, &remain);
 		}
 	}
+
+	*macro_execution = false;
 }
 
 /*
@@ -300,6 +293,37 @@ void Keyboard::record_macro() {
 	close(evfd);
 }
 
+void Keyboard::process_input(int key) {
+	if (key == max_skeys + MKEY_GAMECENTER) {
+		if(macro_execution) {
+			macro_execution = false;
+		}
+
+		toggle_macropad();
+	} else if (key == max_skeys + MKEY_RECORD) {
+		if(macro_execution) {
+			macro_execution = false;
+		}
+
+		record_macro();
+	} else if (key == max_skeys + MKEY_PROFILE) {
+		if(macro_execution) {
+			macro_execution = false;
+		}
+
+		switch_profile();
+	} else if (key) {
+		if(macro_execution) {
+			macro_execution = false;
+		} else {
+			std::string path(get_xmlpath(key));
+			macro_execution = true;
+			std::thread t(play_macro, path, virtinput, &macro_execution);
+			t.detach();
+		}
+	}
+}
+
 void Keyboard::listen() {
 	/*
 	 * poll() checks the device for any activities and blocks the loop. This
@@ -314,6 +338,7 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *data, libconfig::Config *conf
 	Keyboard::pw = pw;
 	Keyboard::data = data;
 	Keyboard::virtinput = new VirtualInput(data, pw);
+	Keyboard::macro_execution = false;
 	profile = 0;
 	auto_led = 0;
 	record_led = 0;

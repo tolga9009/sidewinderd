@@ -8,6 +8,7 @@
 #ifndef KEYBOARD_CLASS_H
 #define KEYBOARD_CLASS_H
 
+#include <atomic>
 #include <string>
 
 #include <poll.h>
@@ -24,6 +25,7 @@ class Keyboard {
 		Keyboard(sidewinderd::DeviceData *data, libconfig::Config *config, struct passwd *pw);
 		~Keyboard();
 	private:
+		std::atomic<bool> macro_execution;
 		int profile, auto_led, record_led, macropad, max_skeys;
 		int fd, evfd;
 		struct passwd *pw;
@@ -32,12 +34,12 @@ class Keyboard {
 		sidewinderd::DeviceData *data;
 		VirtualInput *virtinput;
 		int get_input();
-		void process_input(int key);
 		std::string get_xmlpath(int key);
 		void feature_request(unsigned char data = 0x04);
 		void setup_poll();
-		void play_macro(std::string path);
+		static void play_macro(std::string path, VirtualInput *virtinput, std::atomic<bool> *macro_execution);
 		void record_macro();
+		void process_input(int key);
 		void toggle_macropad();
 		void switch_profile();
 };
