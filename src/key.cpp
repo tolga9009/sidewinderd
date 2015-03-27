@@ -6,7 +6,6 @@
  */
 
 #include <iostream>
-#include <string>
 #include <sstream>
 
 #include "key.hpp"

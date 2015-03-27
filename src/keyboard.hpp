@@ -36,11 +36,12 @@ class Keyboard {
 		void feature_request(unsigned char data = 0x04);
 		void setup_poll();
 		static void play_macro(std::string path, VirtualInput *virtinput);
-		void record_macro();
+		void record_macro(std::string path);
 		void toggle_macropad();
 		void switch_profile();
-		struct KeyData check();
+		struct KeyData check(nfds_t nfds);
 		void process_input(struct KeyData *kd);
+		void record_mode_handler();
 };
 
 #endif

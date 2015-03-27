@@ -24,8 +24,6 @@ class Key {
 		struct KeyData *kd;
 		std::string GetMacroPath(int profile);
 		Key(struct KeyData *kd);
-	private:
-		bool active, macro_active;;
 };
 
 #endif

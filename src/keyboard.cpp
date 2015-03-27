@@ -147,27 +147,30 @@ void Keyboard::play_macro(std::string path, VirtualInput *virtinput) {
 	tinyxml2::XMLDocument doc;
 
 	doc.LoadFile(path.c_str());
-	tinyxml2::XMLElement* root = doc.FirstChildElement("Macro");
 
-	for (tinyxml2::XMLElement* child = root->FirstChildElement(); child; child = child->NextSiblingElement()) {
-		if (child->Name() == std::string("KeyBoardEvent")) {
-			bool boolDown;
-			int key = std::atoi(child->GetText());
+	if(!doc.ErrorID()) {
+		tinyxml2::XMLElement* root = doc.FirstChildElement("Macro");
 
-			child->QueryBoolAttribute("Down", &boolDown);
-			virtinput->send_event(EV_KEY, key, boolDown);
-		} else if (child->Name() == std::string("DelayEvent")) {
-			int delay = std::atoi(child->GetText());
-			struct timespec request, remain;
-			/*
-			 * value is given in milliseconds, so we need to split it into
-			 * seconds and nanoseconds. nanosleep() is interruptable and saves
-			 * the remaining sleep time.
-			 */
-			request.tv_sec = delay / 1000;
-			delay = delay - (request.tv_sec * 1000);
-			request.tv_nsec = 1000000L * delay;
-			nanosleep(&request, &remain);
+		for (tinyxml2::XMLElement* child = root->FirstChildElement(); child; child = child->NextSiblingElement()) {
+			if (child->Name() == std::string("KeyBoardEvent")) {
+				bool boolDown;
+				int key = std::atoi(child->GetText());
+
+				child->QueryBoolAttribute("Down", &boolDown);
+				virtinput->send_event(EV_KEY, key, boolDown);
+			} else if (child->Name() == std::string("DelayEvent")) {
+				int delay = std::atoi(child->GetText());
+				struct timespec request, remain;
+				/*
+				 * value is given in milliseconds, so we need to split it into
+				 * seconds and nanoseconds. nanosleep() is interruptable and saves
+				 * the remaining sleep time.
+				 */
+				request.tv_sec = delay / 1000;
+				delay = delay - (request.tv_sec * 1000);
+				request.tv_nsec = 1000000L * delay;
+				nanosleep(&request, &remain);
+			}
 		}
 	}
 }
@@ -176,33 +179,13 @@ void Keyboard::play_macro(std::string path, VirtualInput *virtinput) {
  * Macro recording captures delays by default. Use the configuration to disable
  * capturing delays.
  */
-/*
- * TODO: abort Macro recording, if Record key is pressed again.
- */
-void Keyboard::record_macro() {
-	std::string path;
-	int run;
+void Keyboard::record_macro(std::string path) {
+	bool run = true;
 	struct timeval prev;
 	struct KeyData kd;
 
 	prev.tv_usec = 0;
 	prev.tv_sec = 0;
-	run = 1;
-	record_led = 3;
-	feature_request();
-
-	while (run) {
-		poll(fds, 1, -1);
-		kd = get_input();
-
-		if (kd.Type == KeyData::KeyType::Macro) {
-			Key mkey(&kd);
-			path = mkey.GetMacroPath(profile);
-			record_led = 2;
-			run = 0;
-			feature_request();
-		}
-	}
 
 	std::cout << "Start Macro Recording on " << data->devnode.input_event << std::endl;
 
@@ -223,17 +206,13 @@ void Keyboard::record_macro() {
 	/* start root element "Macro" */
 	doc.InsertFirstChild(root);
 
-	run = 1;
-
 	while (run) {
-		poll(fds, 2, -1);
-
-		kd = get_input();
+		kd = check(2);
 
 		if (kd.Index == EXTRA_KEY_RECORD && kd.Type == KeyData::KeyType::Extra) {
 			record_led = 0;
-			run = 0;
 			feature_request();
+			run = false;
 		}
 
 		struct input_event inev;
@@ -291,26 +270,53 @@ void Keyboard::process_input(struct KeyData *kd) {
 		if (kd->Index == EXTRA_KEY_GAMECENTER) {
 			toggle_macropad();
 		} else if (kd->Index == EXTRA_KEY_RECORD) {
-			record_macro();
+			record_mode_handler();
 		} else if (kd->Index == EXTRA_KEY_PROFILE) {
 			switch_profile();
 		}
 	}
 }
 
-struct KeyData Keyboard::check() {
+void Keyboard::record_mode_handler() {
+	bool run = true;
+	record_led = 3;
+	feature_request();
+
+	while (run) {
+		struct KeyData kd = check(1);
+
+		if (kd.Type == KeyData::KeyType::Macro) {
+			record_led = 2;
+			feature_request();
+			run = false;
+			Key mkey(&kd);
+			record_macro(mkey.GetMacroPath(profile));
+		} else if (kd.Type == KeyData::KeyType::Extra) {
+			/* deactivate Record LED */
+			record_led = 0;
+			feature_request();
+			run = false;
+
+			if (kd.Index != EXTRA_KEY_RECORD) {
+				process_input(&kd);
+			}
+		}
+	}
+}
+
+struct KeyData Keyboard::check(nfds_t nfds) {
 	/*
 	 * poll() checks the device for any activities and blocks the loop. This
 	 * leads to a very efficient polling mechanism.
 	 */
-	poll(fds, 1, -1);
+	poll(fds, nfds, -1);
 	struct KeyData kd = get_input();
 
 	return kd;
 }
 
 void Keyboard::listen() {
-	struct KeyData kd = check();
+	struct KeyData kd = check(1);
 	process_input(&kd);
 }
 
@@ -348,6 +354,7 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *data, libconfig::Config *conf
 
 Keyboard::~Keyboard() {
 	delete virtinput;
+	record_led = 0;
 	feature_request(0);
 	close(fd);
 }
