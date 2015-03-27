@@ -27,24 +27,11 @@
 #define MAX_BUF		8
 #define MIN_PROFILE	0
 #define MAX_PROFILE	2
-#define SIDEWINDER_X6_MAX_SKEYS	30
-#define SIDEWINDER_X4_MAX_SKEYS	6
 
 /* media keys */
-#define MKEY_GAMECENTER		0x10
-#define MKEY_RECORD			0x11
-#define MKEY_PROFILE		0x14
-
-/* Returns path to XML, containing macro instructions. */
-std::string Keyboard::get_xmlpath(int key) {
-	std::stringstream path;
-
-	if (key && key < max_skeys) {
-		path << "profile_" << profile + 1 << "/" << "s" << key << ".xml";
-	}
-
-	return path.str();
-}
+#define EXTRA_KEY_GAMECENTER	0x10
+#define EXTRA_KEY_RECORD		0x11
+#define EXTRA_KEY_PROFILE		0x14
 
 void Keyboard::feature_request(unsigned char data) {
 	unsigned char buf[2];
@@ -89,7 +76,8 @@ void Keyboard::switch_profile() {
  * TODO: only return latest pressed key, if multiple keys have been pressed at
  * the same time.
  */
-int Keyboard::get_input() {
+struct KeyData Keyboard::get_input() {
+	struct KeyData kd = {};
 	int key, nbytes;
 	unsigned char buf[MAX_BUF];
 
@@ -137,30 +125,32 @@ int Keyboard::get_input() {
 			for (int j = 0; buf[i]; j++) {
 				key = ((i - 1) * 8) + ffs(buf[i]);
 
-				return key;
+				kd.Index = key;
+				kd.Type = KeyData::KeyType::Macro;
+				return kd;
 
 				buf[i] &= buf[i] - 1;
 			}
 		}
 	} else if (nbytes == 8 && buf[0] == 1 && buf[6]) {
 		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
-		return max_skeys + buf[6];
+		kd.Index = buf[6];
+		kd.Type = KeyData::KeyType::Extra;
+		return kd;
 	}
 
-	return 0;
+	return kd;
 }
 
 /* TODO: interrupt and exit play_macro when any macro_key has been pressed */
-void Keyboard::play_macro(std::string path, VirtualInput *virtinput, std::atomic<bool> *macro_execution) {
+void Keyboard::play_macro(std::string path, VirtualInput *virtinput) {
 	tinyxml2::XMLDocument doc;
 
 	doc.LoadFile(path.c_str());
 	tinyxml2::XMLElement* root = doc.FirstChildElement("Macro");
 
 	for (tinyxml2::XMLElement* child = root->FirstChildElement(); child; child = child->NextSiblingElement()) {
-		if (*macro_execution == false) {
-			continue;
-		} else if (child->Name() == std::string("KeyBoardEvent")) {
+		if (child->Name() == std::string("KeyBoardEvent")) {
 			bool boolDown;
 			int key = std::atoi(child->GetText());
 
@@ -180,8 +170,6 @@ void Keyboard::play_macro(std::string path, VirtualInput *virtinput, std::atomic
 			nanosleep(&request, &remain);
 		}
 	}
-
-	*macro_execution = false;
 }
 
 /*
@@ -195,6 +183,7 @@ void Keyboard::record_macro() {
 	std::string path;
 	int run;
 	struct timeval prev;
+	struct KeyData kd;
 
 	prev.tv_usec = 0;
 	prev.tv_sec = 0;
@@ -203,12 +192,12 @@ void Keyboard::record_macro() {
 	feature_request();
 
 	while (run) {
-		int key;
 		poll(fds, 1, -1);
-		key = get_input();
+		kd = get_input();
 
-		if (key) {
-			path = get_xmlpath(key);
+		if (kd.Type == KeyData::KeyType::Macro) {
+			Key mkey(&kd);
+			path = mkey.GetMacroPath(profile);
 			record_led = 2;
 			run = 0;
 			feature_request();
@@ -237,12 +226,11 @@ void Keyboard::record_macro() {
 	run = 1;
 
 	while (run) {
-		int key;
 		poll(fds, 2, -1);
 
-		key = get_input();
+		kd = get_input();
 
-		if (key == max_skeys + MKEY_RECORD) {
+		if (kd.Index == EXTRA_KEY_RECORD && kd.Type == KeyData::KeyType::Extra) {
 			record_led = 0;
 			run = 0;
 			feature_request();
@@ -293,44 +281,37 @@ void Keyboard::record_macro() {
 	close(evfd);
 }
 
-void Keyboard::process_input(int key) {
-	if (key == max_skeys + MKEY_GAMECENTER) {
-		if(macro_execution) {
-			macro_execution = false;
-		}
-
-		toggle_macropad();
-	} else if (key == max_skeys + MKEY_RECORD) {
-		if(macro_execution) {
-			macro_execution = false;
-		}
-
-		record_macro();
-	} else if (key == max_skeys + MKEY_PROFILE) {
-		if(macro_execution) {
-			macro_execution = false;
-		}
-
-		switch_profile();
-	} else if (key) {
-		if(macro_execution) {
-			macro_execution = false;
-		} else {
-			std::string path(get_xmlpath(key));
-			macro_execution = true;
-			std::thread t(play_macro, path, virtinput, &macro_execution);
-			t.detach();
+void Keyboard::process_input(struct KeyData *kd) {
+	if (kd->Type == KeyData::KeyType::Macro) {
+		Key mkey(kd);
+		std::string path = mkey.GetMacroPath(profile);
+		std::thread t(play_macro, path, virtinput);
+		t.detach();
+	} else if (kd->Type == KeyData::KeyType::Extra) {
+		if (kd->Index == EXTRA_KEY_GAMECENTER) {
+			toggle_macropad();
+		} else if (kd->Index == EXTRA_KEY_RECORD) {
+			record_macro();
+		} else if (kd->Index == EXTRA_KEY_PROFILE) {
+			switch_profile();
 		}
 	}
 }
 
-void Keyboard::listen() {
+struct KeyData Keyboard::check() {
 	/*
 	 * poll() checks the device for any activities and blocks the loop. This
 	 * leads to a very efficient polling mechanism.
 	 */
 	poll(fds, 1, -1);
-	process_input(get_input());
+	struct KeyData kd = get_input();
+
+	return kd;
+}
+
+void Keyboard::listen() {
+	struct KeyData kd = check();
+	process_input(&kd);
 }
 
 Keyboard::Keyboard(struct sidewinderd::DeviceData *data, libconfig::Config *config, struct passwd *pw) {
@@ -338,13 +319,10 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *data, libconfig::Config *conf
 	Keyboard::pw = pw;
 	Keyboard::data = data;
 	Keyboard::virtinput = new VirtualInput(data, pw);
-	Keyboard::macro_execution = false;
 	profile = 0;
 	auto_led = 0;
 	record_led = 0;
 	macropad = 0;
-
-	max_skeys = SIDEWINDER_X6_MAX_SKEYS; /* messed up right now */
 
 	for (int i = MIN_PROFILE; i <= MAX_PROFILE; i++) {
 		std::stringstream path;
