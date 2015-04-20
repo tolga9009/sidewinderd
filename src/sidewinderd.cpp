@@ -292,7 +292,20 @@ int main(int argc, char *argv[]) {
 
 	/* creating sidewinderd directory in user's home directory */
 	std::string workdir = pw->pw_dir;
-	workdir.append("/.sidewinderd");
+	std::string xdg_data;
+
+	if (const char *env = std::getenv("XDG_DATA_HOME")) {
+		xdg_data = env;
+
+		if (!xdg_data.empty()) {
+			workdir = xdg_data;
+		}
+	} else {
+		xdg_data = "/.local/share";
+		workdir.append(xdg_data);
+	}
+
+	workdir.append("/sidewinderd");
 	mkdir(workdir.c_str(), S_IRWXU);
 
 	if (chdir(workdir.c_str())) {
