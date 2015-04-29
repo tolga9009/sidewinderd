@@ -1,6 +1,6 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8)
-ADD_DEFINITIONS(-Wall -Wextra -std=c++11)
 PROJECT(sidewinderd)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra")
 
 ADD_SUBDIRECTORY(src)
 
