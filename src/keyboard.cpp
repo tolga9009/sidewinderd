@@ -26,7 +26,7 @@
 /* constants */
 #define MAX_BUF		8
 #define MIN_PROFILE	0
-#define MAX_PROFILE	2
+#define MAX_PROFILE	3
 
 /* media keys */
 #define EXTRA_KEY_GAMECENTER	0x10
@@ -59,12 +59,7 @@ void Keyboard::toggle_macropad() {
 }
 
 void Keyboard::switch_profile() {
-	profile++;
-
-	if (profile > MAX_PROFILE) {
-		profile = MIN_PROFILE;
-	}
-
+	profile = (profile + 1) % MAX_PROFILE;
 	feature_request();
 }
 
@@ -330,7 +325,7 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *data, libconfig::Config *conf
 	record_led = 0;
 	macropad = 0;
 
-	for (int i = MIN_PROFILE; i <= MAX_PROFILE; i++) {
+	for (int i = MIN_PROFILE; i < MAX_PROFILE; i++) {
 		std::stringstream path;
 
 		path << "profile_" << i + 1;
