@@ -72,7 +72,7 @@ void Keyboard::switch_profile() {
  * the same time.
  */
 struct KeyData Keyboard::get_input() {
-	struct KeyData kd = {};
+	struct KeyData kd = {0, KeyData::KeyType::Unknown};
 	int key, nbytes;
 	unsigned char buf[MAX_BUF];
 
@@ -116,22 +116,17 @@ struct KeyData Keyboard::get_input() {
 		 * S29	0x08 0x00 0x00 0x00 0x10 - buf[4]
 		 * S30	0x08 0x00 0x00 0x00 0x20 - buf[4]
 		 */
-		for (int i = 1; i < nbytes; i++) {
-			for (int j = 0; buf[i]; j++) {
-				key = ((i - 1) * 8) + ffs(buf[i]);
-
-				kd.Index = key;
-				kd.Type = KeyData::KeyType::Macro;
-				return kd;
-
-				buf[i] &= buf[i] - 1;
-			}
-		}
+		key = (static_cast<int>(buf[1]))
+				| (static_cast<int>(buf[2]) << 8)
+				| (static_cast<int>(buf[3]) << 16)
+				| (static_cast<int>(buf[4]) << 24);
+		key = ffs(key);
+		kd.Index = key;
+		kd.Type = KeyData::KeyType::Macro;
 	} else if (nbytes == 8 && buf[0] == 1 && buf[6]) {
 		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
 		kd.Index = buf[6];
 		kd.Type = KeyData::KeyType::Extra;
-		return kd;
 	}
 
 	return kd;
