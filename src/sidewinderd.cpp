@@ -27,45 +27,45 @@
 #include "sidewinderd.hpp"
 #include "virtual_input.hpp"
 
-void sig_handler(int sig) {
+void sigHandler(int sig) {
 	switch (sig) {
 		case SIGINT:
-			sidewinderd::state = 0;
+			sidewinderd::isRunning = 0;
 			break;
 		case SIGTERM:
-			sidewinderd::state = 0;
+			sidewinderd::isRunning = 0;
 			break;
 		default:
 			std::cout << "Unknown signal received." << std::endl;
 	}
 }
 
-int create_pid(std::string pid_file) {
-	int pid_fd = open(pid_file.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+int createPid(std::string pidFilePath) {
+	int pidFd = open(pidFilePath.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	if (pid_fd < 0) {
+	if (pidFd < 0) {
 		std::cout << "PID file could not be created." << std::endl;
 		return -1;
 	}
 
-	if (flock(pid_fd, LOCK_EX | LOCK_NB) < 0) {
+	if (flock(pidFd, LOCK_EX | LOCK_NB) < 0) {
 		std::cout << "Could not lock PID file, another instance is already running. Terminating." << std::endl;
-		close(pid_fd);
+		close(pidFd);
 		return -1;
 	}
 
-	return pid_fd;
+	return pidFd;
 }
 
-void close_pid(int pid_fd, std::string pid_file) {
-	flock(pid_fd, LOCK_UN);
-	close(pid_fd);
-	unlink(pid_file.c_str());
+void closePid(int pidFd, std::string pidFilePath) {
+	flock(pidFd, LOCK_UN);
+	close(pidFd);
+	unlink(pidFilePath.c_str());
 }
 
-int daemonize() {
+/* TODO: throw exceptions instead of returning values */
+int initializeDaemon() {
 	pid_t pid, sid;
-
 	pid = fork();
 
 	if (pid < 0) {
@@ -97,7 +97,6 @@ int daemonize() {
 
 	umask(0);
 	chdir("/");
-
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
 	close(STDERR_FILENO);
@@ -105,9 +104,9 @@ int daemonize() {
 	return 0;
 }
 
-void setup_config(libconfig::Config *config, std::string config_file = "/etc/sidewinderd.conf") {
+void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/sidewinderd.conf") {
 	try {
-		config->readFile(config_file.c_str());
+		config->readFile(configFilePath.c_str());
 	} catch (const libconfig::FileIOException &fioex) {
 		std::cerr << "I/O error while reading file." << std::endl;
 	} catch (const libconfig::ParseException &pex) {
@@ -134,24 +133,22 @@ void setup_config(libconfig::Config *config, std::string config_file = "/etc/sid
 	}
 
 	try {
-		config->writeFile(config_file.c_str());
+		config->writeFile(configFilePath.c_str());
 	} catch (const libconfig::FileIOException &fioex) {
 		std::cerr << "I/O error while writing file." << std::endl;
 	}
 }
 
-int search_device(struct sidewinderd::DeviceData *data) {
+int findDevice(struct sidewinderd::DeviceData *deviceData) {
 	struct udev *udev;
 	struct udev_device *dev;
 	struct udev_enumerate *enumerate;
-	struct udev_list_entry *devices, *dev_list_entry;
-	int found = 0;
-
+	struct udev_list_entry *devices, *devListEntry;
+	bool isFound = false;
 	udev = udev_new();
 
 	if (!udev) {
 		std::cout << "Can't create udev" << std::endl;
-
 		return -1;
 	}
 
@@ -161,13 +158,13 @@ int search_device(struct sidewinderd::DeviceData *data) {
 	udev_enumerate_scan_devices(enumerate);
 	devices = udev_enumerate_get_list_entry(enumerate);
 
-	udev_list_entry_foreach(dev_list_entry, devices) {
-		const char *syspath, *devnode_path;
-		syspath = udev_list_entry_get_name(dev_list_entry);
-		dev = udev_device_new_from_syspath(udev, syspath);
+	udev_list_entry_foreach(devListEntry, devices) {
+		const char *sysPath, *devNodePath;
+		sysPath = udev_list_entry_get_name(devListEntry);
+		dev = udev_device_new_from_syspath(udev, sysPath);
 
 		if (std::string(udev_device_get_subsystem(dev)) == std::string("hidraw")) {
-			devnode_path = udev_device_get_devnode(dev);
+			devNodePath = udev_device_get_devnode(dev);
 			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
 
 			if (!dev) {
@@ -177,11 +174,11 @@ int search_device(struct sidewinderd::DeviceData *data) {
 			if (std::string(udev_device_get_sysattr_value(dev, "bInterfaceNumber")) == std::string("01")) {
 				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
 
-				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == data->vid) {
-					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == data->pid) {
-						std::cout << "Found device: " << data->vid << ":" << data->pid << std::endl;
-						found = 1;
-						data->devnode.hidraw = devnode_path;
+				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == deviceData->vid) {
+					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == deviceData->pid) {
+						std::cout << "Found device: " << deviceData->vid << ":" << deviceData->pid << std::endl;
+						isFound = true;
+						deviceData->devNode.hidraw = devNodePath;
 					}
 				}
 			}
@@ -190,13 +187,13 @@ int search_device(struct sidewinderd::DeviceData *data) {
 		/* find correct /dev/input/event* file */
 		if (std::string(udev_device_get_subsystem(dev)) == std::string("input")
 			&& udev_device_get_property_value(dev, "ID_MODEL_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == data->pid
+			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == deviceData->pid
 			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == data->vid
+			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == deviceData->vid
 			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
-			&& strstr(syspath, "event")
+			&& strstr(sysPath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
-				data->devnode.input_event = udev_device_get_devnode(dev);
+				deviceData->devNode.inputEvent = udev_device_get_devnode(dev);
 		}
 
 		udev_device_unref(dev);
@@ -206,22 +203,18 @@ int search_device(struct sidewinderd::DeviceData *data) {
 	udev_enumerate_unref(enumerate);
 	udev_unref(udev);
 
-	return found;
+	return isFound;
 }
 
 int main(int argc, char *argv[]) {
 	/* signal handling */
 	struct sigaction action;
-
-	action.sa_handler = sig_handler;
-
-	sigaction(SIGINT, &action, NULL);
-	sigaction(SIGTERM, &action, NULL);
-
-	sidewinderd::state = 1;
+	action.sa_handler = sigHandler;
+	sigaction(SIGINT, &action, nullptr);
+	sigaction(SIGTERM, &action, nullptr);
 
 	/* handling command-line options */
-	static struct option long_options[] = {
+	static struct option longOptions[] = {
 		{"config", required_argument, 0, 'c'},
 		{"daemon", no_argument, 0, 'd'},
 		{"verbose", no_argument, 0, 'v'},
@@ -229,17 +222,16 @@ int main(int argc, char *argv[]) {
 	};
 
 	int opt, index, ret;
+	std::string configFilePath;
 	index = 0;
 
-	std::string config_file;
-
-	while ((opt = getopt_long(argc, argv, ":c:dv", long_options, &index)) != -1) {
+	while ((opt = getopt_long(argc, argv, ":c:dv", longOptions, &index)) != -1) {
 		switch (opt) {
 			case 'c':
-				config_file = optarg;
+				configFilePath = optarg;
 				break;
 			case 'd':
-				ret = daemonize();
+				ret = initializeDaemon();
 
 				if (ret > 0) {
 					return EXIT_SUCCESS;
@@ -268,41 +260,39 @@ int main(int argc, char *argv[]) {
 	/* reading config file */
 	libconfig::Config config;
 
-	if (config_file.empty()) {
-		setup_config(&config);
+	if (configFilePath.empty()) {
+		setupConfig(&config);
 	} else {
-		setup_config(&config, config_file);
+		setupConfig(&config, configFilePath);
 	}
 
 	/* creating pid file for single instance mechanism */
-	std::string pid_file = config.lookup("pid-file");
-	int pid_fd = create_pid(pid_file);
+	std::string pidFilePath = config.lookup("pid-file");
+	int pidFd = createPid(pidFilePath);
 
-	if (pid_fd < 0) {
+	if (pidFd < 0) {
 		return EXIT_FAILURE;
 	}
 
 	/* get user's home directory */
 	std::string user = config.lookup("user");
 	struct passwd *pw = getpwnam(user.c_str());
-
 	/* setting gid and uid to configured user */
 	setegid(pw->pw_gid);
 	seteuid(pw->pw_uid);
-
 	/* creating sidewinderd directory in user's home directory */
 	std::string workdir = pw->pw_dir;
-	std::string xdg_data;
+	std::string xdgData;
 
 	if (const char *env = std::getenv("XDG_DATA_HOME")) {
-		xdg_data = env;
+		xdgData = env;
 
-		if (!xdg_data.empty()) {
-			workdir = xdg_data;
+		if (!xdgData.empty()) {
+			workdir = xdgData;
 		}
 	} else {
-		xdg_data = "/.local/share";
-		workdir.append(xdg_data);
+		xdgData = "/.local/share";
+		workdir.append(xdgData);
 	}
 
 	workdir.append("/sidewinderd");
@@ -314,24 +304,24 @@ int main(int argc, char *argv[]) {
 
 	std::cout << "Sidewinderd v" << sidewinderd::version << " has been started." << std::endl;
 
-	for (std::vector<std::pair<std::string, std::string>>::iterator it = sidewinderd::devices.begin(); it != sidewinderd::devices.end(); ++it) {
-		struct sidewinderd::DeviceData data;
-		data.vid = it->first;
-		data.pid = it->second;
+	for (std::vector<std::pair<std::string, std::string>>::iterator it = sidewinderd::deviceList.begin(); it != sidewinderd::deviceList.end(); ++it) {
+		struct sidewinderd::DeviceData deviceData;
+		deviceData.vid = it->first;
+		deviceData.pid = it->second;
 
-		if (search_device(&data) > 0) {
-			Keyboard kbd(&data, &config, pw);
-
+		if (findDevice(&deviceData) > 0) {
+			Keyboard keyboard(&deviceData, &config, pw);
 			/* main loop */
 			/* TODO: exit loop, if keyboards gets unplugged */
-			while (sidewinderd::state) {
-				kbd.listen();
+			sidewinderd::isRunning = 1;
+
+			while (sidewinderd::isRunning) {
+				keyboard.listen();
 			}
 		}
 	}
 
-	close_pid(pid_fd, pid_file);
-
+	closePid(pidFd, pidFilePath);
 	std::cout << "Sidewinderd has been terminated." << std::endl;
 
 	return EXIT_SUCCESS;

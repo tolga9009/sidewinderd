@@ -11,13 +11,13 @@
 #include "key.hpp"
 
 /* Returns path to XML, containing macro instructions */
-std::string Key::GetMacroPath(int profile) {
-	std::stringstream path;
-	path << "profile_" << profile + 1 << "/" << "s" << kd->Index << ".xml";
+std::string Key::getMacroPath(int profile) {
+	std::stringstream macroPath;
+	macroPath << "profile_" << profile + 1 << "/" << "s" << keyData_->index << ".xml";
 
-	return path.str();
+	return macroPath.str();
 }
 
-Key::Key(struct KeyData *kd) {
-	Key::kd = kd;
+Key::Key(struct KeyData *keyData) {
+	keyData_ = keyData;
 }

@@ -24,43 +24,40 @@
 #include "keyboard.hpp"
 
 /* constants */
-#define MAX_BUF		8
-#define MIN_PROFILE	0
-#define MAX_PROFILE	3
-
+const int MAX_BUF = 8;
+const int MIN_PROFILE = 0;
+const int MAX_PROFILE = 3;
 /* media keys */
-#define EXTRA_KEY_GAMECENTER	0x10
-#define EXTRA_KEY_RECORD		0x11
-#define EXTRA_KEY_PROFILE		0x14
+const int EXTRA_KEY_GAMECENTER = 0x10;
+const int EXTRA_KEY_RECORD = 0x11;
+const int EXTRA_KEY_PROFILE = 0x14;
 
-void Keyboard::feature_request(unsigned char data) {
+void Keyboard::featureRequest(unsigned char data) {
 	unsigned char buf[2];
 	/* buf[0] is Report Number, buf[1] is the control byte */
 	buf[0] = 0x7;
-	buf[1] = data << profile;
-	buf[1] |= macropad;
-	buf[1] |= record_led << 5;
-
-	ioctl(fd, HIDIOCSFEATURE(sizeof(buf)), buf);
+	buf[1] = data << profile_;
+	buf[1] |= macroPad_;
+	buf[1] |= recordLed_ << 5;
+	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-void Keyboard::setup_poll() {
-	fds[0].fd = fd;
+void Keyboard::setupPoll() {
+	fds[0].fd = fd_;
 	fds[0].events = POLLIN;
-
 	/* ignore second fd for now */
 	fds[1].fd = -1;
 	fds[1].events = POLLIN;
 }
 
-void Keyboard::toggle_macropad() {
-	macropad ^= 1;
-	feature_request();
+void Keyboard::toggleMacroPad() {
+	macroPad_ ^= 1;
+	featureRequest();
 }
 
-void Keyboard::switch_profile() {
-	profile = (profile + 1) % MAX_PROFILE;
-	feature_request();
+void Keyboard::switchProfile() {
+	profile_ = (profile_ + 1) % MAX_PROFILE;
+	featureRequest();
 }
 
 /*
@@ -71,14 +68,13 @@ void Keyboard::switch_profile() {
  * TODO: only return latest pressed key, if multiple keys have been pressed at
  * the same time.
  */
-struct KeyData Keyboard::get_input() {
-	struct KeyData kd = {0, KeyData::KeyType::Unknown};
-	int key, nbytes;
+struct KeyData Keyboard::getInput() {
+	struct KeyData keyData = KeyData();
+	int key, nBytes;
 	unsigned char buf[MAX_BUF];
+	nBytes = read(fd_, buf, MAX_BUF);
 
-	nbytes = read(fd, buf, MAX_BUF);
-
-	if (nbytes == 5 && buf[0] == 8) {
+	if (nBytes == 5 && buf[0] == 8) {
 		/*
 		 * cutting off buf[0], which is used to differentiate between macro and
 		 * media keys. Our task is now to translate the buffer codes to
@@ -117,37 +113,35 @@ struct KeyData Keyboard::get_input() {
 		 * S30	0x08 0x00 0x00 0x00 0x20 - buf[4]
 		 */
 		key = (static_cast<int>(buf[1]))
-				| (static_cast<int>(buf[2]) << 8)
-				| (static_cast<int>(buf[3]) << 16)
-				| (static_cast<int>(buf[4]) << 24);
+			| (static_cast<int>(buf[2]) << 8)
+			| (static_cast<int>(buf[3]) << 16)
+			| (static_cast<int>(buf[4]) << 24);
 		key = ffs(key);
-		kd.Index = key;
-		kd.Type = KeyData::KeyType::Macro;
-	} else if (nbytes == 8 && buf[0] == 1 && buf[6]) {
+		keyData.index = key;
+		keyData.type = KeyData::KeyType::Macro;
+	} else if (nBytes == 8 && buf[0] == 1 && buf[6]) {
 		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
-		kd.Index = buf[6];
-		kd.Type = KeyData::KeyType::Extra;
+		keyData.index = buf[6];
+		keyData.type = KeyData::KeyType::Extra;
 	}
 
-	return kd;
+	return keyData;
 }
 
 /* TODO: interrupt and exit play_macro when any macro_key has been pressed */
-void Keyboard::play_macro(std::string path, VirtualInput *virtinput) {
-	tinyxml2::XMLDocument doc;
+void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
+	tinyxml2::XMLDocument xmlDoc;
+	xmlDoc.LoadFile(macroPath.c_str());
 
-	doc.LoadFile(path.c_str());
-
-	if(!doc.ErrorID()) {
-		tinyxml2::XMLElement* root = doc.FirstChildElement("Macro");
+	if(!xmlDoc.ErrorID()) {
+		tinyxml2::XMLElement* root = xmlDoc.FirstChildElement("Macro");
 
 		for (tinyxml2::XMLElement* child = root->FirstChildElement(); child; child = child->NextSiblingElement()) {
 			if (child->Name() == std::string("KeyBoardEvent")) {
-				bool boolDown;
+				bool isPressed;
 				int key = std::atoi(child->GetText());
-
-				child->QueryBoolAttribute("Down", &boolDown);
-				virtinput->send_event(EV_KEY, key, boolDown);
+				child->QueryBoolAttribute("Down", &isPressed);
+				virtInput->sendEvent(EV_KEY, key, isPressed);
 			} else if (child->Name() == std::string("DelayEvent")) {
 				int delay = std::atoi(child->GetText());
 				struct timespec request, remain;
@@ -169,59 +163,52 @@ void Keyboard::play_macro(std::string path, VirtualInput *virtinput) {
  * Macro recording captures delays by default. Use the configuration to disable
  * capturing delays.
  */
-void Keyboard::record_macro(std::string path) {
-	bool run = true;
+void Keyboard::recordMacro(std::string path) {
 	struct timeval prev;
-	struct KeyData kd;
-
+	struct KeyData keyData;
 	prev.tv_usec = 0;
 	prev.tv_sec = 0;
-
-	std::cout << "Start Macro Recording on " << data->devnode.input_event << std::endl;
-
+	std::cout << "Start Macro Recording on " << deviceData_->devNode.inputEvent << std::endl;
 	seteuid(0);
-	evfd = open(data->devnode.input_event.c_str(), O_RDONLY | O_NONBLOCK);
-	seteuid(pw->pw_uid);
+	evfd_ = open(deviceData_->devNode.inputEvent.c_str(), O_RDONLY | O_NONBLOCK);
+	seteuid(pw_->pw_uid);
 
-	if (evfd < 0) {
+	if (evfd_ < 0) {
 		std::cout << "Can't open input event file" << std::endl;
 	}
 
 	/* additionally monitor /dev/input/event* with poll */
-	fds[1].fd = evfd;
-
+	fds[1].fd = evfd_;
 	tinyxml2::XMLDocument doc;
 	tinyxml2::XMLNode* root = doc.NewElement("Macro");
-
 	/* start root element "Macro" */
 	doc.InsertFirstChild(root);
 
-	while (run) {
-		kd = check(2);
+	bool isRecordMode = true;
 
-		if (kd.Index == EXTRA_KEY_RECORD && kd.Type == KeyData::KeyType::Extra) {
-			record_led = 0;
-			feature_request();
-			run = false;
+	while (isRecordMode) {
+		keyData = pollDevice(2);
+
+		if (keyData.index == EXTRA_KEY_RECORD && keyData.type == KeyData::KeyType::Extra) {
+			recordLed_ = 0;
+			featureRequest();
+			isRecordMode = false;
 		}
 
 		struct input_event inev;
+		read(evfd_, &inev, sizeof(struct input_event));
 
-		read(evfd, &inev, sizeof(struct input_event));
-
-		if (inev.type == 1 && inev.value != 2) {
-
+		if (inev.type == EV_KEY && inev.value != 2) {
 			/* only capturing delays, if capture_delays is set to true */
-			if (prev.tv_usec && config->lookup("capture_delays")) {
+			if (prev.tv_usec && config_->lookup("capture_delays")) {
 				long int diff = (inev.time.tv_usec + 1000000 * inev.time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
 				int delay = diff / 1000;
-
 				/* start element "DelayEvent" */
 				tinyxml2::XMLElement* DelayEvent = doc.NewElement("DelayEvent");
-
 				DelayEvent->SetText(delay);
 				root->InsertEndChild(DelayEvent);
 			}
+
 			/* start element "KeyBoardEvent" */
 			tinyxml2::XMLElement* KeyBoardEvent = doc.NewElement("KeyBoardEvent");
 
@@ -233,7 +220,6 @@ void Keyboard::record_macro(std::string path) {
 
 			KeyBoardEvent->SetText(inev.code);
 			root->InsertEndChild(KeyBoardEvent);
-
 			prev = inev.time;
 		}
 	}
@@ -244,107 +230,104 @@ void Keyboard::record_macro(std::string path) {
 	}
 
 	std::cout << "Exit Macro Recording" << std::endl;
-
 	/* remove event file from poll fds */
 	fds[1].fd = -1;
-	close(evfd);
+	close(evfd_);
 }
 
-void Keyboard::process_input(struct KeyData *kd) {
-	if (kd->Type == KeyData::KeyType::Macro) {
-		Key mkey(kd);
-		std::string path = mkey.GetMacroPath(profile);
-		std::thread t(play_macro, path, virtinput);
-		t.detach();
-	} else if (kd->Type == KeyData::KeyType::Extra) {
-		if (kd->Index == EXTRA_KEY_GAMECENTER) {
-			toggle_macropad();
-		} else if (kd->Index == EXTRA_KEY_RECORD) {
-			record_mode_handler();
-		} else if (kd->Index == EXTRA_KEY_PROFILE) {
-			switch_profile();
+void Keyboard::handleKey(struct KeyData *keyData) {
+	if (keyData->type == KeyData::KeyType::Macro) {
+		Key key(keyData);
+		std::string macroPath = key.getMacroPath(profile_);
+		std::thread thread(playMacro, macroPath, virtInput_);
+		thread.detach();
+	} else if (keyData->type == KeyData::KeyType::Extra) {
+		if (keyData->index == EXTRA_KEY_GAMECENTER) {
+			toggleMacroPad();
+		} else if (keyData->index == EXTRA_KEY_RECORD) {
+			handleRecordMode();
+		} else if (keyData->index == EXTRA_KEY_PROFILE) {
+			switchProfile();
 		}
 	}
 }
 
-void Keyboard::record_mode_handler() {
-	bool run = true;
-	record_led = 3;
-	feature_request();
+void Keyboard::handleRecordMode() {
+	bool isRecordMode = true;
+	recordLed_ = 3;
+	featureRequest();
 
-	while (run) {
-		struct KeyData kd = check(1);
+	while (isRecordMode) {
+		struct KeyData keyData = pollDevice(1);
 
-		if (kd.Type == KeyData::KeyType::Macro) {
-			record_led = 2;
-			feature_request();
-			run = false;
-			Key mkey(&kd);
-			record_macro(mkey.GetMacroPath(profile));
-		} else if (kd.Type == KeyData::KeyType::Extra) {
+		if (keyData.type == KeyData::KeyType::Macro) {
+			recordLed_ = 2;
+			featureRequest();
+			isRecordMode = false;
+			Key key(&keyData);
+			recordMacro(key.getMacroPath(profile_));
+		} else if (keyData.type == KeyData::KeyType::Extra) {
 			/* deactivate Record LED */
-			record_led = 0;
-			feature_request();
-			run = false;
+			recordLed_ = 0;
+			featureRequest();
+			isRecordMode = false;
 
-			if (kd.Index != EXTRA_KEY_RECORD) {
-				process_input(&kd);
+			if (keyData.index != EXTRA_KEY_RECORD) {
+				handleKey(&keyData);
 			}
 		}
 	}
 }
 
-struct KeyData Keyboard::check(nfds_t nfds) {
+struct KeyData Keyboard::pollDevice(nfds_t nfds) {
 	/*
 	 * poll() checks the device for any activities and blocks the loop. This
 	 * leads to a very efficient polling mechanism.
 	 */
 	poll(fds, nfds, -1);
-	struct KeyData kd = get_input();
+	struct KeyData keyData = getInput();
 
-	return kd;
+	return keyData;
 }
 
 void Keyboard::listen() {
-	struct KeyData kd = check(1);
-	process_input(&kd);
+	struct KeyData keyData = pollDevice(1);
+	handleKey(&keyData);
 }
 
-Keyboard::Keyboard(struct sidewinderd::DeviceData *data, libconfig::Config *config, struct passwd *pw) {
-	Keyboard::config = config;
-	Keyboard::pw = pw;
-	Keyboard::data = data;
-	Keyboard::virtinput = new VirtualInput(data, pw);
-	profile = 0;
-	auto_led = 0;
-	record_led = 0;
-	macropad = 0;
+Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData, libconfig::Config *config, struct passwd *pw) {
+	config_ = config;
+	pw_ = pw;
+	deviceData_ = deviceData;
+	virtInput_ = new VirtualInput(deviceData_, pw);
+	profile_ = 0;
+	autoLed_ = 0;
+	recordLed_ = 0;
+	macroPad_ = 0;
 
 	for (int i = MIN_PROFILE; i < MAX_PROFILE; i++) {
-		std::stringstream path;
-
-		path << "profile_" << i + 1;
-		mkdir(path.str().c_str(), S_IRWXU);
+		std::stringstream profileFolderPath;
+		profileFolderPath << "profile_" << i + 1;
+		mkdir(profileFolderPath.str().c_str(), S_IRWXU);
 	}
 
 	/* open file descriptor with root privileges */
 	seteuid(0);
-	fd = open(data->devnode.hidraw.c_str(), O_RDWR | O_NONBLOCK);
-	seteuid(pw->pw_uid);
+	fd_ = open(deviceData_->devNode.hidraw.c_str(), O_RDWR | O_NONBLOCK);
+	seteuid(pw_->pw_uid);
 
 	/* TODO: throw exception if interface can't be accessed, call destructor */
-	if (fd < 0) {
+	if (fd_ < 0) {
 		std::cout << "Can't open hidraw interface" << std::endl;
 	}
 
-	feature_request();
-
-	setup_poll();
+	featureRequest();
+	setupPoll();
 }
 
 Keyboard::~Keyboard() {
-	delete virtinput;
-	record_led = 0;
-	feature_request(0);
-	close(fd);
+	delete virtInput_;
+	recordLed_ = 0;
+	featureRequest(0);
+	close(fd_);
 }

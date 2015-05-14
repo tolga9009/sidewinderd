@@ -11,19 +11,22 @@
 #include <string>
 
 struct KeyData {
-	int Index;
+	int index;
+
 	enum class KeyType {
 		Unknown,
 		Macro,
 		Extra
-	} Type;
+	} type;
 };
 
 class Key {
 	public:
-		struct KeyData *kd;
-		std::string GetMacroPath(int profile);
-		Key(struct KeyData *kd);
+		std::string getMacroPath(int profile);
+		Key(struct KeyData *keyData);
+
+	private:
+		struct KeyData *keyData_;
 };
 
 #endif

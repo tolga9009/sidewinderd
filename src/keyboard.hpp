@@ -22,26 +22,27 @@
 class Keyboard {
 	public:
 		void listen();
-		Keyboard(sidewinderd::DeviceData *data, libconfig::Config *config, struct passwd *pw);
+		Keyboard(sidewinderd::DeviceData *deviceData, libconfig::Config *config, struct passwd *pw);
 		~Keyboard();
+
 	private:
-		int profile, auto_led, record_led, macropad;
-		int fd, evfd;
-		struct passwd *pw;
+		int profile_, autoLed_, recordLed_, macroPad_;
+		int fd_, evfd_;
+		struct passwd *pw_;
 		struct pollfd fds[2];
-		libconfig::Config *config;
-		sidewinderd::DeviceData *data;
-		VirtualInput *virtinput;
-		struct KeyData get_input();
-		void feature_request(unsigned char data = 0x04);
-		void setup_poll();
-		static void play_macro(std::string path, VirtualInput *virtinput);
-		void record_macro(std::string path);
-		void toggle_macropad();
-		void switch_profile();
-		struct KeyData check(nfds_t nfds);
-		void process_input(struct KeyData *kd);
-		void record_mode_handler();
+		libconfig::Config *config_;
+		sidewinderd::DeviceData *deviceData_;
+		VirtualInput *virtInput_;
+		struct KeyData getInput();
+		void featureRequest(unsigned char data = 0x04);
+		void setupPoll();
+		static void playMacro(std::string macroPath, VirtualInput *virtInput);
+		void recordMacro(std::string path);
+		void toggleMacroPad();
+		void switchProfile();
+		struct KeyData pollDevice(nfds_t nfds);
+		void handleKey(struct KeyData *keyData);
+		void handleRecordMode();
 };
 
 #endif

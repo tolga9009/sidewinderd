@@ -13,12 +13,12 @@
 /* global variables */
 namespace sidewinderd {
 	struct DevNode {
-		std::string hidraw, input_event;
+		std::string hidraw, inputEvent;
 	};
 
 	struct DeviceData {
 		std::string vid, pid;
-		struct DevNode devnode;
+		struct DevNode devNode;
 	};
 };
 

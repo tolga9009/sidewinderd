@@ -14,14 +14,15 @@
 
 class VirtualInput {
 	public:
-		void send_event(short type, short code, int value);
+		void sendEvent(short type, short code, int value);
 		VirtualInput(sidewinderd::DeviceData *data, struct passwd *pw);
 		~VirtualInput();
+
 	private:
-		int uifd;
-		struct passwd *pw;
-		sidewinderd::DeviceData *data;
-		void create_uidev();
+		int uifd_;
+		struct passwd *pw_;
+		sidewinderd::DeviceData *deviceData_;
+		void createUidev();
 };
 
 #endif

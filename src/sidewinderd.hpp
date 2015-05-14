@@ -14,12 +14,11 @@
 #include <utility>
 #include <vector>
 
-/* global variables */
 namespace sidewinderd {
 	std::string version("0.2.0");
-	std::atomic<bool> state;
+	std::atomic<bool> isRunning;
 
-	std::vector<std::pair<std::string, std::string>> devices = {
+	std::vector<std::pair<std::string, std::string>> deviceList = {
 		{"045e", "074b"},	/* Microsoft Sidewinder X6 */
 		{"045e", "0768"}	/* Microsoft Sidewinder X4 */
 	};
