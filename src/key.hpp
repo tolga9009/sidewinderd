@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
  *
  * This source file is part of Sidewinder daemon and is distributed under the
@@ -10,9 +10,22 @@
 
 #include <string>
 
+/**
+ * Struct for storing and passing key data.
+ *
+ * @var index key index
+ */
 struct KeyData {
 	int index;
 
+	/**
+	 * Enum class to classify key type.
+	 * 
+	 * @var Unknown not classified type
+	 * @var Macro key type for macro keys, e.g. S1 on Microsoft Sidewinder X4
+	 * @var Extra key type for extra keys, e.g. Bank Switch key on Microsoft
+	 * Sidewinder X4
+	 */
 	enum class KeyType {
 		Unknown,
 		Macro,
@@ -20,6 +33,11 @@ struct KeyData {
 	} type;
 };
 
+/**
+ * Class representing a key.
+ *
+ * Currently, it only works for Macro keys.
+ */
 class Key {
 	public:
 		std::string getMacroPath(int profile);

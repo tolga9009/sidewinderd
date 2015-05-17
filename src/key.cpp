@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
  *
  * This source file is part of Sidewinder daemon and is distributed under the
@@ -10,7 +10,9 @@
 
 #include "key.hpp"
 
-/* Returns path to XML, containing macro instructions */
+/**
+ * Assembles relative path to Macro file.
+ */
 std::string Key::getMacroPath(int profile) {
 	std::stringstream macroPath;
 	macroPath << "profile_" << profile + 1 << "/" << "s" << keyData_->index << ".xml";
@@ -18,6 +20,9 @@ std::string Key::getMacroPath(int profile) {
 	return macroPath.str();
 }
 
+/**
+ * Constructor initializing structs.
+ */
 Key::Key(struct KeyData *keyData) {
 	keyData_ = keyData;
 }

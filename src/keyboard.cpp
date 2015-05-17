@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
  *
  * This source file is part of Sidewinder daemon and is distributed under the

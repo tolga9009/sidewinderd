@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
  *
  * This source file is part of Sidewinder daemon and is distributed under the
@@ -16,8 +16,11 @@
 
 namespace sidewinderd {
 	std::string version("0.2.0");
-	std::atomic<bool> isRunning;
+	std::atomic<bool> isRunning; /**< Sidewinderd main thread */
 
+	/**
+	 * List of supported devices.
+	 */
 	std::vector<std::pair<std::string, std::string>> deviceList = {
 		{"045e", "074b"},	/* Microsoft Sidewinder X6 */
 		{"045e", "0768"}	/* Microsoft Sidewinder X4 */

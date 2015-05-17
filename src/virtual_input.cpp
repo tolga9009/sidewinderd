@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
  *
  * This source file is part of Sidewinder daemon and is distributed under the
@@ -17,6 +17,43 @@
 
 #include "virtual_input.hpp"
 
+/**
+ * Method for sending input events to the operating system.
+ *
+ * @param type type of input event, e.g. EV_KEY
+ * @param code keycode defined in header file input.h
+ * @param value value the event carries, e.g. EV_KEY: 0 represents release, 1
+ * keypress and 2 autorepeat
+ */
+void VirtualInput::sendEvent(short type, short code, int value) {
+	struct input_event inev = input_event();
+	inev.type = type;
+	inev.code = code;
+	inev.value = value;
+	write(uifd_, &inev, sizeof(struct input_event));
+	inev.type = EV_SYN;
+	inev.code = 0;
+	inev.value = 0;
+	write(uifd_, &inev, sizeof(struct input_event));
+}
+
+/**
+ * Constructor setting up operating system specific back-ends.
+ */
+VirtualInput::VirtualInput(sidewinderd::DeviceData *deviceData, struct passwd *pw) {
+	pw_ = pw;
+	deviceData_ = deviceData;
+	/* for Linux */
+	createUidev();
+}
+
+VirtualInput::~VirtualInput() {
+	close(uifd_);
+}
+
+/**
+ * Creating a uinput virtual input device under Linux.
+ */
 void VirtualInput::createUidev() {
 	/* open uinput device with root privileges */
 	seteuid(0);
@@ -47,36 +84,15 @@ void VirtualInput::createUidev() {
 		ioctl(uifd_, UI_SET_KEYBIT, i);
 	}
 
+	/* uinput device details */
 	struct uinput_user_dev uidev = uinput_user_dev();
-	/* our uinput device's details */
 	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "Sidewinderd");
 	uidev.id.bustype = BUS_USB;
 	uidev.id.vendor = std::stoi(deviceData_->vid, nullptr, 16);
 	uidev.id.product = std::stoi(deviceData_->pid, nullptr, 16);
 	uidev.id.version = 1;
+	/* write uinput device details */
 	write(uifd_, &uidev, sizeof(struct uinput_user_dev));
+	/* create uinput device */
 	ioctl(uifd_, UI_DEV_CREATE);
-}
-
-void VirtualInput::sendEvent(short type, short code, int value) {
-	struct input_event inev = input_event();
-	inev.type = type;
-	inev.code = code;
-	inev.value = value;
-	write(uifd_, &inev, sizeof(struct input_event));
-	inev.type = EV_SYN;
-	inev.code = 0;
-	inev.value = 0;
-	write(uifd_, &inev, sizeof(struct input_event));
-}
-
-VirtualInput::VirtualInput(sidewinderd::DeviceData *deviceData, struct passwd *pw) {
-	pw_ = pw;
-	deviceData_ = deviceData;
-	/* for Linux */
-	createUidev();
-}
-
-VirtualInput::~VirtualInput() {
-	close(uifd_);
 }

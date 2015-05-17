@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
  *
  * This source file is part of Sidewinder daemon and is distributed under the
@@ -12,6 +12,12 @@
 
 #include "device_data.hpp"
 
+/**
+ * Class representing a virtual input device.
+ *
+ * Needed to send key events to the operating system. For Linux, uinput is used
+ * as the back-end.
+ */
 class VirtualInput {
 	public:
 		void sendEvent(short type, short code, int value);
@@ -19,9 +25,9 @@ class VirtualInput {
 		~VirtualInput();
 
 	private:
-		int uifd_;
-		struct passwd *pw_;
-		sidewinderd::DeviceData *deviceData_;
+		int uifd_; /**< uinput device file descriptor */
+		struct passwd *pw_; /**< configured user for permissions */
+		sidewinderd::DeviceData *deviceData_; /**< device information */
 		void createUidev();
 };
 
