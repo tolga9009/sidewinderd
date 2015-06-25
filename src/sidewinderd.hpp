@@ -15,7 +15,7 @@
 #include <vector>
 
 namespace sidewinderd {
-	std::string version("0.2.0");
+	std::string version("0.2.1");
 	std::atomic<bool> isRunning; /**< Sidewinderd main thread */
 
 	/**
