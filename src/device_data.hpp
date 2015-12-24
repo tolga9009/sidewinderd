@@ -12,7 +12,7 @@
 
 namespace sidewinderd {
 	/**
-	 * Struct for storing and passing paths to relevant /dev/* files.
+	 * Struct for storing and passing paths to relevant /dev/<node> files.
 	 */
 	struct DevNode {
 		std::string hidraw, inputEvent; /**< path to hidraw and input event */
@@ -23,7 +23,7 @@ namespace sidewinderd {
 	 */
 	struct DeviceData {
 		std::string vid, pid; /**< device's VID and PID */
-		struct DevNode devNode; /**< paths to relevant /dev/* files */
+		struct DevNode devNode; /**< paths to relevant /dev/<node> files */
 	};
 };
 
