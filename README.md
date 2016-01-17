@@ -1,68 +1,98 @@
-sidewinderd
-===========
+Sidewinder daemon
+=================
 
-Sidewinder daemon - Linux support for Microsoft Sidewinder X4 / X6 keyboards
-
-
-What's this?
-============
-
-sidewinderd is a userland daemon, which takes care of your Microsoft Sidewinder
-X4 / X6 keyboard's special keys. It's in an early development stage, but you can
-already test basic functionality. This driver has been made, because there is no
-complete and user-friendly Sidewinder X4 and X6 driver out there. Wattos' Linux
-Sidewinder X6 driver (https://github.com/Wattos/LinuxSidewinderX6) doesn't
-support our beloved Sidewinder X4s and EvilAndi's x4daemon
-(http://geekparadise.de/x4daemon/) needs to be recompiled everytime you want to
-change a button and also doesn't support setting any LEDs, profile switching and
-macro playing / recording. Also, it seems to have minor issues with media keys,
-due to libusb's nature of detaching the device from hid-generic kernel driver to
-gain full access over it.
-
-So, there is need for a complete and stable driver for Linux. We're supporting
-both, the Sidewinder X4 and X6. Our goal is to reach feature-parity with
-Microsoft's Windows drivers and open up the doors for other, non-Microsoft
-gaming keyboards and mice.
+This project provides support for gaming peripherals under Linux.
 
 
-Dependencies
-============
+Devices
+=======
 
-- cmake 2.8.8 (make)
-- libconfig 1.4.9
-- tinyxml2 2.2.0
-- libudev 210
-
-
-Features
-========
-
-- Macro recording
-- Macro playback, using XML files - similar to Microsoft's solution
-- Special keys (S1-S6 / S1-S30 keys) - listening to keys via hidraw
-- Profile switch
-- Setting LEDs (LED 1-3, Record)
-- X6 only: toggle Macropad between Macro-mode and Numpad-mode
-- Very basic configuration setup
+* Microsoft SideWinder X4
+* Microsoft SideWinder X6
+* Logitech G710+ (experimental)
 
 
-Todo
-====
+Install
+=======
 
-- Auto profile and Auto LED support
-- Documentation
-- Mac OS X support
-- Code refactoring
+Please check, if this project has already been packaged for your specific Linux
+distribution. Currently maintained packages:
+
+  * Arch Linux: https://aur.archlinux.org/packages/sidewinderd/
+
+If there are no packages available for your Linux distribution, please proceed
+with the manual installation from source:
+
+1. Install the following dependencies. Please refer to your specific Linux
+distribution, as package names might differ.
+
+  * cmake 2.8.8 (make)
+  * libconfig 1.4.9
+  * tinyxml2 2.2.0
+  * libudev 210
+
+2. Create a build directory in the toplevel directory:
+
+    ```
+    mkdir build
+    ```
+
+3. Run cmake from within the new build directory:
+
+    ```
+    cd build
+    cmake ..
+    ```
+
+4. Compile and install:
+
+    ```
+    make
+    make install
+    ```
 
 
-Hey, I want to help!
-====================
+Usage
+=====
 
-Great! I was looking for help ^_^! Please get in contact with me via my public
-E-Mail adress, which can be found on my profile page. You can also E-Mail me
-about anything else related to this project, like ideas / suggestions.
+Start and enable Sidewinderd daemon:
 
-This project is sticking to Geosoft's C++ style guidelines and is using
-Doxygen-friendly comments.
+    ```
+    systemctl start sidewinderd.service
+    systemctl enable sidewinderd.service
+    ```
 
-If you find any bugs, please report by opening up an issue on GitHub.
+Configure `/etc/sidewinderd.conf` according to your needs. Please change the
+user, as the default user is root.
+
+You can now use your gaming peripheral! Please note, that there is no graphical
+user interface. Some LEDs might light up, letting you know, that Sidewinder
+daemon has successfully recognized your keyboard.
+
+The macro keys are fully programmable, but there is no default event. You can
+add functions to them, by recording macros or key combinations:
+
+1. Choose a profile. The profile LED on the device will show you, which profile
+is active.
+
+2. Press record key. The record LED will light up.
+
+3. Now, choose and press a macro key. On some devices, the record LED will begin
+to blink. You're now in macro mode. Please note, that existing macros may get
+overwritten.
+
+4. Everything you type on the keyboard will get recorded. You can either record
+a single key combination or a long series of keypresses. Please note, that
+keypresses still send events to your operating system and your programs.
+
+5. When done, press the record key again. This will stop recording and save the
+macro.
+
+6. You've now created a macro. Use it by setting the chosen profile and pressing
+the chosen macro key.
+
+
+License
+=======
+
+This project is made available under the MIT License.
