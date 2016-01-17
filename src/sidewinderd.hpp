@@ -14,6 +14,8 @@
 #include <utility>
 #include <vector>
 
+#include "device_data.hpp"
+
 namespace sidewinderd {
 	std::string version("0.2.1");
 	std::atomic<bool> isRunning; /**< Sidewinderd main thread */
@@ -21,9 +23,9 @@ namespace sidewinderd {
 	/**
 	 * List of supported devices.
 	 */
-	std::vector<std::pair<std::string, std::string>> deviceList = {
-		{"045e", "074b"},	/* Microsoft Sidewinder X6 */
-		{"045e", "0768"}	/* Microsoft Sidewinder X4 */
+	std::vector<DeviceData> deviceList = {
+		{"045e", "074b", "Microsoft SideWinder X6"},
+		{"045e", "0768", "Microsoft SideWinder X4"}
 	};
 };
 

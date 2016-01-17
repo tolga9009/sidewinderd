@@ -22,8 +22,7 @@ namespace sidewinderd {
 	 * Struct for storing and passing device data.
 	 */
 	struct DeviceData {
-		std::string vid, pid; /**< device's VID and PID */
-		struct DevNode devNode; /**< paths to relevant /dev/<node> files */
+		std::string vid, pid, name; /**< device's VID and PID */
 	};
 };
 

@@ -22,7 +22,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "device_data.hpp"
 #include "keyboard.hpp"
 #include "sidewinderd.hpp"
 #include "virtual_input.hpp"
@@ -139,7 +138,7 @@ void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/s
 	}
 }
 
-int findDevice(struct sidewinderd::DeviceData *deviceData) {
+int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::DevNode *devNode) {
 	struct udev *udev;
 	struct udev_device *dev;
 	struct udev_enumerate *enumerate;
@@ -178,7 +177,7 @@ int findDevice(struct sidewinderd::DeviceData *deviceData) {
 					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == deviceData->pid) {
 						std::cout << "Found device: " << deviceData->vid << ":" << deviceData->pid << std::endl;
 						isFound = true;
-						deviceData->devNode.hidraw = devNodePath;
+						devNode->hidraw = devNodePath;
 					}
 				}
 			}
@@ -193,7 +192,7 @@ int findDevice(struct sidewinderd::DeviceData *deviceData) {
 			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
 			&& strstr(sysPath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
-				deviceData->devNode.inputEvent = udev_device_get_devnode(dev);
+				devNode->inputEvent = udev_device_get_devnode(dev);
 		}
 
 		udev_device_unref(dev);
@@ -304,13 +303,14 @@ int main(int argc, char *argv[]) {
 
 	std::cout << "Sidewinderd v" << sidewinderd::version << " has been started." << std::endl;
 
-	for (std::vector<std::pair<std::string, std::string>>::iterator it = sidewinderd::deviceList.begin(); it != sidewinderd::deviceList.end(); ++it) {
+	for (std::vector<sidewinderd::DeviceData>::iterator it = sidewinderd::deviceList.begin(); it != sidewinderd::deviceList.end(); ++it) {
 		struct sidewinderd::DeviceData deviceData;
-		deviceData.vid = it->first;
-		deviceData.pid = it->second;
+		struct sidewinderd::DevNode devNode;
+		deviceData.vid = it->vid;
+		deviceData.pid = it->pid;
 
-		if (findDevice(&deviceData) > 0) {
-			Keyboard keyboard(&deviceData, &config, pw);
+		if (findDevice(&deviceData, &devNode) > 0) {
+			Keyboard keyboard(&deviceData, &devNode, &config, pw);
 			/* main loop */
 			/* TODO: exit loop, if keyboards gets unplugged */
 			sidewinderd::isRunning = 1;

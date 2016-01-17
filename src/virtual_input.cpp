@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014 - 2015 Tolga Cakir <tolga@cevel.net>
+ * Copyright (c) 2014 - 2016 Tolga Cakir <tolga@cevel.net>
  *
  * This source file is part of Sidewinder daemon and is distributed under the
  * MIT License. For more information, see LICENSE file.
@@ -40,9 +40,10 @@ void VirtualInput::sendEvent(short type, short code, int value) {
 /**
  * Constructor setting up operating system specific back-ends.
  */
-VirtualInput::VirtualInput(sidewinderd::DeviceData *deviceData, struct passwd *pw) {
+VirtualInput::VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, struct passwd *pw) {
 	pw_ = pw;
 	deviceData_ = deviceData;
+	devNode_ = devNode;
 	/* for Linux */
 	createUidev();
 }

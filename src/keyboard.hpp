@@ -22,7 +22,7 @@
 class Keyboard {
 	public:
 		void listen();
-		Keyboard(sidewinderd::DeviceData *deviceData, libconfig::Config *config, struct passwd *pw);
+		Keyboard(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw);
 		~Keyboard();
 
 	private:
@@ -32,6 +32,7 @@ class Keyboard {
 		struct pollfd fds[2];
 		libconfig::Config *config_;
 		sidewinderd::DeviceData *deviceData_;
+		sidewinderd::DevNode *devNode_;
 		VirtualInput *virtInput_;
 		struct KeyData getInput();
 		void featureRequest(unsigned char data = 0x04);
