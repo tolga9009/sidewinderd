@@ -5,18 +5,12 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#ifndef SIDEWINDERD_H
-#define SIDEWINDERD_H
-
-#include <atomic>
-#include <iostream>
-#include <string>
-
 #include "device_data.hpp"
 
 namespace sidewinderd {
-	std::string version("0.2.1");
-	std::atomic<bool> isRunning; /**< Sidewinderd main thread */
+	std::vector<DeviceData> deviceList = {
+		{"045e", "074b", "Microsoft SideWinder X6"},
+		{"045e", "0768", "Microsoft SideWinder X4"},
+		{"046d", "c24d", "Logitech G710+"}
+	};
 };
-
-#endif

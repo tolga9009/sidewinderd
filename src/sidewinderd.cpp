@@ -23,6 +23,8 @@
 #include <sys/types.h>
 
 #include "keyboard.hpp"
+#include "logitech_g710p.hpp"
+#include "microsoft_sidewinder.hpp"
 #include "sidewinderd.hpp"
 #include "virtual_input.hpp"
 
@@ -189,6 +191,8 @@ int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::D
 			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == deviceData->pid
 			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
 			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == deviceData->vid
+			&& udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM") != NULL
+			&& std::string(udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM")) == "00"
 			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
 			&& strstr(sysPath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
@@ -310,13 +314,24 @@ int main(int argc, char *argv[]) {
 		deviceData.pid = it->pid;
 
 		if (findDevice(&deviceData, &devNode) > 0) {
-			Keyboard keyboard(&deviceData, &devNode, &config, pw);
-			/* main loop */
-			/* TODO: exit loop, if keyboards gets unplugged */
-			sidewinderd::isRunning = 1;
+			if (deviceData.vid == "045e") {
+				SideWinder keyboard(&deviceData, &devNode, &config, pw);
+				/* main loop */
+				/* TODO: exit loop, if keyboards gets unplugged */
+				sidewinderd::isRunning = 1;
 
-			while (sidewinderd::isRunning) {
-				keyboard.listen();
+				while (sidewinderd::isRunning) {
+					keyboard.listen();
+				}
+			} else if (deviceData.vid == "046d") {
+				LogitechG710 keyboard(&deviceData, &devNode, &config, pw);
+				/* main loop */
+				/* TODO: exit loop, if keyboards gets unplugged */
+				sidewinderd::isRunning = 1;
+
+				while (sidewinderd::isRunning) {
+					keyboard.listen();
+				}
 			}
 		}
 	}

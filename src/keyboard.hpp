@@ -25,7 +25,7 @@ class Keyboard {
 		Keyboard(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw);
 		~Keyboard();
 
-	private:
+	protected:
 		int profile_, autoLed_, recordLed_, macroPad_;
 		int fd_, evfd_;
 		struct passwd *pw_;
@@ -34,7 +34,7 @@ class Keyboard {
 		sidewinderd::DeviceData *deviceData_;
 		sidewinderd::DevNode *devNode_;
 		VirtualInput *virtInput_;
-		struct KeyData getInput();
+		virtual struct KeyData getInput();
 		void featureRequest(unsigned char data = 0x04);
 		void setupPoll();
 		static void playMacro(std::string macroPath, VirtualInput *virtInput);
@@ -42,7 +42,7 @@ class Keyboard {
 		void toggleMacroPad();
 		void switchProfile();
 		struct KeyData pollDevice(nfds_t nfds);
-		void handleKey(struct KeyData *keyData);
+		virtual void handleKey(struct KeyData *keyData);
 		void handleRecordMode();
 };
 

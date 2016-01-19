@@ -21,38 +21,32 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include "keyboard.hpp"
+#include "microsoft_sidewinder.hpp"
 
 /* constants */
 const int MAX_BUF = 8;
-const int MIN_PROFILE = 0;
 const int MAX_PROFILE = 3;
 /* media keys */
 const int EXTRA_KEY_GAMECENTER = 0x10;
 const int EXTRA_KEY_RECORD = 0x11;
 const int EXTRA_KEY_PROFILE = 0x14;
 
-void Keyboard::featureRequest(unsigned char data) {
+void SideWinder::featureRequest(unsigned char data) {
 	unsigned char buf[2];
 	/* buf[0] is Report ID, buf[1] is value */
-	buf[0] = data;
+	buf[0] = 0x7;
+	buf[1] = data << profile_;
+	buf[1] |= macroPad_;
+	buf[1] |= recordLed_ << 5;
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-void Keyboard::setupPoll() {
-	fds[0].fd = fd_;
-	fds[0].events = POLLIN;
-	/* ignore second fd for now */
-	fds[1].fd = -1;
-	fds[1].events = POLLIN;
-}
-
-void Keyboard::toggleMacroPad() {
+void SideWinder::toggleMacroPad() {
 	macroPad_ ^= 1;
 	featureRequest();
 }
 
-void Keyboard::switchProfile() {
+void SideWinder::switchProfile() {
 	profile_ = (profile_ + 1) % MAX_PROFILE;
 	featureRequest();
 }
@@ -65,7 +59,7 @@ void Keyboard::switchProfile() {
  * TODO: only return latest pressed key, if multiple keys have been pressed at
  * the same time.
  */
-struct KeyData Keyboard::getInput() {
+struct KeyData SideWinder::getInput() {
 	struct KeyData keyData = KeyData();
 	int key, nBytes;
 	unsigned char buf[MAX_BUF];
@@ -125,42 +119,11 @@ struct KeyData Keyboard::getInput() {
 	return keyData;
 }
 
-/* TODO: interrupt and exit play_macro when any macro_key has been pressed */
-void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
-	tinyxml2::XMLDocument xmlDoc;
-	xmlDoc.LoadFile(macroPath.c_str());
-
-	if(!xmlDoc.ErrorID()) {
-		tinyxml2::XMLElement* root = xmlDoc.FirstChildElement("Macro");
-
-		for (tinyxml2::XMLElement* child = root->FirstChildElement(); child; child = child->NextSiblingElement()) {
-			if (child->Name() == std::string("KeyBoardEvent")) {
-				bool isPressed;
-				int key = std::atoi(child->GetText());
-				child->QueryBoolAttribute("Down", &isPressed);
-				virtInput->sendEvent(EV_KEY, key, isPressed);
-			} else if (child->Name() == std::string("DelayEvent")) {
-				int delay = std::atoi(child->GetText());
-				struct timespec request, remain;
-				/*
-				 * value is given in milliseconds, so we need to split it into
-				 * seconds and nanoseconds. nanosleep() is interruptable and saves
-				 * the remaining sleep time.
-				 */
-				request.tv_sec = delay / 1000;
-				delay = delay - (request.tv_sec * 1000);
-				request.tv_nsec = 1000000L * delay;
-				nanosleep(&request, &remain);
-			}
-		}
-	}
-}
-
 /*
  * Macro recording captures delays by default. Use the configuration to disable
  * capturing delays.
  */
-void Keyboard::recordMacro(std::string path) {
+void SideWinder::recordMacro(std::string path) {
 	struct timeval prev;
 	struct KeyData keyData;
 	prev.tv_usec = 0;
@@ -232,7 +195,7 @@ void Keyboard::recordMacro(std::string path) {
 	close(evfd_);
 }
 
-void Keyboard::handleKey(struct KeyData *keyData) {
+void SideWinder::handleKey(struct KeyData *keyData) {
 	if (keyData->type == KeyData::KeyType::Macro) {
 		Key key(keyData);
 		std::string macroPath = key.getMacroPath(profile_);
@@ -249,7 +212,7 @@ void Keyboard::handleKey(struct KeyData *keyData) {
 	}
 }
 
-void Keyboard::handleRecordMode() {
+void SideWinder::handleRecordMode() {
 	bool isRecordMode = true;
 	recordLed_ = 3;
 	featureRequest();
@@ -274,58 +237,4 @@ void Keyboard::handleRecordMode() {
 			}
 		}
 	}
-}
-
-struct KeyData Keyboard::pollDevice(nfds_t nfds) {
-	/*
-	 * poll() checks the device for any activities and blocks the loop. This
-	 * leads to a very efficient polling mechanism.
-	 */
-	poll(fds, nfds, -1);
-	struct KeyData keyData = getInput();
-
-	return keyData;
-}
-
-void Keyboard::listen() {
-	struct KeyData keyData = pollDevice(1);
-	handleKey(&keyData);
-}
-
-Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw) {
-	config_ = config;
-	pw_ = pw;
-	deviceData_ = deviceData;
-	devNode_ = devNode;
-	virtInput_ = new VirtualInput(deviceData_, devNode_, pw);
-	profile_ = 0;
-	autoLed_ = 0;
-	recordLed_ = 0;
-	macroPad_ = 0;
-
-	for (int i = MIN_PROFILE; i < MAX_PROFILE; i++) {
-		std::stringstream profileFolderPath;
-		profileFolderPath << "profile_" << i + 1;
-		mkdir(profileFolderPath.str().c_str(), S_IRWXU);
-	}
-
-	/* open file descriptor with root privileges */
-	seteuid(0);
-	fd_ = open(devNode->hidraw.c_str(), O_RDWR | O_NONBLOCK);
-	seteuid(pw_->pw_uid);
-
-	/* TODO: throw exception if interface can't be accessed, call destructor */
-	if (fd_ < 0) {
-		std::cout << "Can't open hidraw interface" << std::endl;
-	}
-
-	featureRequest();
-	setupPoll();
-}
-
-Keyboard::~Keyboard() {
-	delete virtInput_;
-	recordLed_ = 0;
-	featureRequest(0);
-	close(fd_);
 }

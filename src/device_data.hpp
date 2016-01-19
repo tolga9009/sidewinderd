@@ -9,6 +9,7 @@
 #define DEVICEDATA_CLASS_H
 
 #include <string>
+#include <vector>
 
 namespace sidewinderd {
 	/**
@@ -24,6 +25,11 @@ namespace sidewinderd {
 	struct DeviceData {
 		std::string vid, pid, name; /**< device's VID and PID */
 	};
+
+	/**
+	 * List of supported devices.
+	 */
+	extern std::vector<DeviceData> deviceList;
 };
 
 #endif
