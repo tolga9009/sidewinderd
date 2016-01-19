@@ -9,7 +9,7 @@ Devices
 
 * Microsoft SideWinder X4
 * Microsoft SideWinder X6
-* Logitech G710+ (experimental)
+* Logitech G710+
 
 
 Install
