@@ -227,4 +227,5 @@ void LogitechG710::disableGhostInput() {
 
 LogitechG710::LogitechG710(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw) : Keyboard::Keyboard(deviceData, devNode, config, pw) {
 	disableGhostInput();
+	featureRequest();
 }

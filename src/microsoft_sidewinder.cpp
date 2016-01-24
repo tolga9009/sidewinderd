@@ -237,3 +237,7 @@ void SideWinder::handleRecordMode() {
 		}
 	}
 }
+
+SideWinder::SideWinder(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw) : Keyboard::Keyboard(deviceData, devNode, config, pw) {
+	featureRequest();
+}
