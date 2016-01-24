@@ -2,7 +2,7 @@
 Description=Daemon for handling Microsoft SideWinder X4 / X6 and Logitech G710+
 
 [Service]
-ExecStart=/usr/bin/sidewinderd
+ExecStart=${CMAKE_INSTALL_PREFIX}/bin/sidewinderd
 
 [Install]
 WantedBy=multi-user.target

@@ -1,10 +1,12 @@
 AUX_SOURCE_DIRECTORY(. SOURCE_LIST)
 
-ADD_EXECUTABLE(${PROJECT_NAME} ${SOURCE_LIST} "${PROJECT_SOURCE_DIR}/etc/sidewinderd.conf" "${PROJECT_SOURCE_DIR}/etc/sidewinderd.service")
+CONFIGURE_FILE("${PROJECT_SOURCE_DIR}/etc/sidewinderd.service.in" "${CMAKE_CURRENT_BINARY_DIR}/sidewinderd.service")
+
+ADD_EXECUTABLE(${PROJECT_NAME} ${SOURCE_LIST} "${PROJECT_SOURCE_DIR}/etc/sidewinderd.conf" "${CMAKE_CURRENT_BINARY_DIR}/sidewinderd.service")
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} config++ udev pthread tinyxml2)
 
 SET(CMAKE_INSTALL_PREFIX "/usr")
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION bin)
 INSTALL(FILES "${PROJECT_SOURCE_DIR}/etc/sidewinderd.conf" DESTINATION /etc COMPONENT config)
-INSTALL(FILES "${PROJECT_SOURCE_DIR}/etc/sidewinderd.service" DESTINATION lib/systemd/system)
+INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/sidewinderd.service" DESTINATION lib/systemd/system)
