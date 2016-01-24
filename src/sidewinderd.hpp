@@ -15,7 +15,7 @@
 #include "device_data.hpp"
 
 namespace sidewinderd {
-	std::string version("0.3.0");
+	std::string version("0.3.1");
 	std::atomic<bool> isRunning; /**< Sidewinderd main thread */
 };
 
