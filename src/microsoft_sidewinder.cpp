@@ -22,9 +22,6 @@
 
 #include "microsoft_sidewinder.hpp"
 
-/* constants */
-const int MAX_BUF = 8;
-const int MAX_PROFILE = 3;
 /* media keys */
 const int EXTRA_KEY_GAMECENTER = 0x10;
 const int EXTRA_KEY_RECORD = 0x11;

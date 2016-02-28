@@ -19,6 +19,11 @@
 #include "key.hpp"
 #include "virtual_input.hpp"
 
+/* constants */
+const int MAX_BUF = 8;
+const int MIN_PROFILE = 0;
+const int MAX_PROFILE = 3;
+
 class Keyboard {
 	public:
 		void listen();
@@ -34,16 +39,16 @@ class Keyboard {
 		sidewinderd::DeviceData *deviceData_;
 		sidewinderd::DevNode *devNode_;
 		VirtualInput *virtInput_;
-		virtual struct KeyData getInput();
+		virtual struct KeyData getInput() = 0;
 		void featureRequest(unsigned char data = 0x04);
 		void setupPoll();
 		static void playMacro(std::string macroPath, VirtualInput *virtInput);
-		void recordMacro(std::string path);
+		virtual void recordMacro(std::string path) = 0;
 		void toggleMacroPad();
 		void switchProfile();
 		struct KeyData pollDevice(nfds_t nfds);
-		virtual void handleKey(struct KeyData *keyData);
-		void handleRecordMode();
+		virtual void handleKey(struct KeyData *keyData) = 0;
+		virtual void handleRecordMode() = 0;
 };
 
 #endif

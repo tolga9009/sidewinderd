@@ -22,9 +22,6 @@
 
 #include "logitech_g710p.hpp"
 
-/* constants */
-const int MAX_BUF = 8;
-
 void LogitechG710::featureRequest() {
 	unsigned char buf[2];
 	/* buf[0] is Report ID, buf[1] is value */
