@@ -1,19 +1,17 @@
-Sidewinder daemon
-=================
+# Sidewinder daemon
 
 This project provides support for gaming peripherals under Linux.
 
 
-Devices
-=======
+## Devices
 
-* Microsoft SideWinder X4
-* Microsoft SideWinder X6
-* Logitech G710+
+  * Microsoft SideWinder X4
+  * Microsoft SideWinder X6
+  * Logitech G710
+  * Logitech G710+
 
 
-Install
-=======
+## Install
 
 Please check, if this project has already been packaged for your specific Linux
 distribution. Currently maintained packages:
@@ -52,8 +50,7 @@ distribution, as package names might differ.
     ```
 
 
-Usage
-=====
+## Usage
 
 Start and enable Sidewinderd daemon:
 
@@ -90,7 +87,16 @@ macro.
 the chosen macro key.
 
 
-License
-=======
+## Contribution
 
-This project is made available under the MIT License.
+In order to contribute to this project, you need to read and agree the Developer
+Certificate of Origin, which can be found in the CONTRIBUTING file. Therefore,
+commits need to be signed-off. You can do this by adding the `-s` flag when
+commiting: `git commit -s`. Pseudonyms and anonymous contributions will not be
+accepted.
+
+
+## License
+
+This project is made available under the MIT License. For more information,
+please refer to the LICENSE file.
