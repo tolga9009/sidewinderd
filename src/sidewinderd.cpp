@@ -37,7 +37,7 @@ void sigHandler(int sig) {
 			sidewinderd::isRunning = 0;
 			break;
 		default:
-			std::cout << "Unknown signal received." << std::endl;
+			std::cerr << "Unknown signal received." << std::endl;
 	}
 }
 
@@ -45,12 +45,12 @@ int createPid(std::string pidFilePath) {
 	int pidFd = open(pidFilePath.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	if (pidFd < 0) {
-		std::cout << "PID file could not be created." << std::endl;
+		std::cerr << "PID file could not be created." << std::endl;
 		return -1;
 	}
 
 	if (flock(pidFd, LOCK_EX | LOCK_NB) < 0) {
-		std::cout << "Could not lock PID file, another instance is already running. Terminating." << std::endl;
+		std::cerr << "Could not lock PID file, another instance is already running. Terminating." << std::endl;
 		close(pidFd);
 		return -1;
 	}
@@ -64,13 +64,12 @@ void closePid(int pidFd, std::string pidFilePath) {
 	unlink(pidFilePath.c_str());
 }
 
-/* TODO: throw exceptions instead of returning values */
 int initializeDaemon() {
 	pid_t pid, sid;
 	pid = fork();
 
 	if (pid < 0) {
-		std::cout << "Error creating daemon" << std::endl;
+		std::cerr << "Error creating daemon." << std::endl;
 		return -1;
 	}
 
@@ -81,14 +80,14 @@ int initializeDaemon() {
 	sid = setsid();
 
 	if (sid < 0) {
-		std::cout << "Error setting sid" << std::endl;
+		std::cerr << "Error setting sid." << std::endl;
 		return -1;
 	}
 
 	pid = fork();
 
 	if (pid < 0) {
-		std::cout << "Error forking second time" << std::endl;
+		std::cerr << "Error forking second time." << std::endl;
 		return -1;
 	}
 
@@ -116,7 +115,6 @@ void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/s
 
 	libconfig::Setting &root = config->getRoot();
 
-	/* TODO: check values for validity and throw exceptions, if invalid */
 	if (!root.exists("user")) {
 		root.add("user", libconfig::Setting::TypeString) = "root";
 	}
@@ -149,7 +147,7 @@ int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::D
 	udev = udev_new();
 
 	if (!udev) {
-		std::cout << "Can't create udev" << std::endl;
+		std::cerr << "Can't create udev." << std::endl;
 		return -1;
 	}
 
@@ -169,7 +167,7 @@ int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::D
 			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
 
 			if (!dev) {
-				std::cout << "Unable to find parent device" << std::endl;
+				std::cerr << "Unable to find parent device." << std::endl;
 			}
 
 			if (std::string(udev_device_get_sysattr_value(dev, "bInterfaceNumber")) == std::string("01")) {
@@ -177,7 +175,7 @@ int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::D
 
 				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == deviceData->vid) {
 					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == deviceData->pid) {
-						std::cout << "Found device: " << deviceData->vid << ":" << deviceData->pid << std::endl;
+						std::clog << "Found device: " << deviceData->vid << ":" << deviceData->pid << std::endl;
 						isFound = true;
 						devNode->hidraw = devNodePath;
 					}
@@ -302,10 +300,10 @@ int main(int argc, char *argv[]) {
 	mkdir(workdir.c_str(), S_IRWXU);
 
 	if (chdir(workdir.c_str())) {
-		std::cout << "Error chdir" << std::endl;
+		std::cerr << "Error accessing working directory." << std::endl;
 	}
 
-	std::cout << "Sidewinderd v" << sidewinderd::version << " has been started." << std::endl;
+	std::clog << "Started sidewinderd v" << sidewinderd::version << "." << std::endl;
 
 	for (std::vector<sidewinderd::DeviceData>::iterator it = sidewinderd::deviceList.begin(); it != sidewinderd::deviceList.end(); ++it) {
 		struct sidewinderd::DeviceData deviceData;
@@ -337,7 +335,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	closePid(pidFd, pidFilePath);
-	std::cout << "Sidewinderd has been terminated." << std::endl;
+	std::clog << "Stopped sidewinderd." << std::endl;
 
 	return EXIT_SUCCESS;
 }
