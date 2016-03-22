@@ -23,6 +23,7 @@
 #include <sys/types.h>
 
 #include "keyboard.hpp"
+#include "logitech_g105.hpp"
 #include "logitech_g710p.hpp"
 #include "microsoft_sidewinder.hpp"
 #include "sidewinderd.hpp"
@@ -322,13 +323,24 @@ int main(int argc, char *argv[]) {
 					keyboard.listen();
 				}
 			} else if (deviceData.vid == "046d") {
-				LogitechG710 keyboard(&deviceData, &devNode, &config, pw);
-				/* main loop */
-				/* TODO: exit loop, if keyboards gets unplugged */
-				sidewinderd::isRunning = 1;
+				if (deviceData.pid == "c24d") {
+					LogitechG710 keyboard(&deviceData, &devNode, &config, pw);
+					/* main loop */
+					/* TODO: exit loop, if keyboards gets unplugged */
+					sidewinderd::isRunning = 1;
 
-				while (sidewinderd::isRunning) {
+					while (sidewinderd::isRunning) {
 					keyboard.listen();
+					}
+				} else if (deviceData.pid == "c248") {
+					LogitechG105 keyboard(&deviceData, &devNode, &config, pw);
+					/* main loop */
+					/* TODO: exit loop, if keyboards gets unplugged */
+					sidewinderd::isRunning = 1;
+
+					while (sidewinderd::isRunning) {
+						keyboard.listen();
+					}
 				}
 			}
 		}

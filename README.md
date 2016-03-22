@@ -7,6 +7,7 @@ This project provides support for gaming peripherals under Linux.
 
   * Microsoft SideWinder X4
   * Microsoft SideWinder X6
+  * Logitech G105
   * Logitech G710
   * Logitech G710+
 
