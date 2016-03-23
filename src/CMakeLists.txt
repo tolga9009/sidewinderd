@@ -4,7 +4,7 @@ CONFIGURE_FILE("${PROJECT_SOURCE_DIR}/etc/sidewinderd.service.in" "${CMAKE_CURRE
 
 ADD_EXECUTABLE(${PROJECT_NAME} ${SOURCE_LIST} "${PROJECT_SOURCE_DIR}/etc/sidewinderd.conf" "${CMAKE_CURRENT_BINARY_DIR}/sidewinderd.service")
 
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} config++ udev pthread tinyxml2)
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} stdc++ config++ udev pthread tinyxml2)
 
 SET(CMAKE_INSTALL_PREFIX "/usr")
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION bin)
