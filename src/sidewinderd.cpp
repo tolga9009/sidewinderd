@@ -306,11 +306,11 @@ int main(int argc, char *argv[]) {
 
 	std::clog << "Started sidewinderd v" << sidewinderd::version << "." << std::endl;
 
-	for (std::vector<sidewinderd::DeviceData>::iterator it = sidewinderd::deviceList.begin(); it != sidewinderd::deviceList.end(); ++it) {
+	for (auto it: sidewinderd::deviceList) {
 		struct sidewinderd::DeviceData deviceData;
 		struct sidewinderd::DevNode devNode;
-		deviceData.vid = it->vid;
-		deviceData.pid = it->pid;
+		deviceData.vid = it.vid;
+		deviceData.pid = it.pid;
 
 		if (findDevice(&deviceData, &devNode) > 0) {
 			if (deviceData.vid == "045e") {
