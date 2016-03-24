@@ -1,9 +1,12 @@
 # Sidewinder daemon
 
-This project provides support for gaming peripherals under Linux.
+This project provides support for gaming peripherals under Linux. It was
+originally designed for the Microsoft SideWinder X4, but we have extended
+support for more keyboards. Our goal is to create a framework-like environment
+for rapid driver development under Linux.
 
 
-## Devices
+## Supported devices
 
   * Microsoft SideWinder X4
   * Microsoft SideWinder X6
@@ -65,25 +68,23 @@ You can now use your gaming peripheral! Please note, that there is no graphical
 user interface. Some LEDs might light up, letting you know, that Sidewinder
 daemon has successfully recognized your keyboard.
 
+
+## Record macros
+
 The macro keys are fully programmable, but there is no default event. You can
 add functions to them, by recording macros or key combinations:
 
 1. Choose a profile. The profile LED on the device will show you, which profile
 is active.
-
 2. Press record key. The record LED will light up.
-
 3. Now, choose and press a macro key. On some devices, the record LED will begin
 to blink. You're now in macro mode. Please note, that existing macros may get
 overwritten.
-
 4. Everything you type on the keyboard will get recorded. You can either record
 a single key combination or a long series of keypresses. Please note, that
 keypresses still send events to your operating system and your programs.
-
 5. When done, press the record key again. This will stop recording and save the
 macro.
-
 6. You've now created a macro. Use it by setting the chosen profile and pressing
 the chosen macro key.
 
