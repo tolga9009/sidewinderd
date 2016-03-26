@@ -10,7 +10,7 @@
 
 #include <pwd.h>
 
-#include "device_data.hpp"
+#include <device_data.hpp>
 
 /**
  * Class representing a virtual input device.

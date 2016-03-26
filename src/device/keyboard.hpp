@@ -15,9 +15,9 @@
 
 #include <libconfig.h++>
 
-#include "device_data.hpp"
-#include "key.hpp"
-#include "virtual_input.hpp"
+#include <device_data.hpp>
+#include <component/key.hpp>
+#include <component/virtual_input.hpp>
 
 /* constants */
 const int MAX_BUF = 8;

@@ -20,7 +20,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include "microsoft_sidewinder.hpp"
+#include <vendor/microsoft/sidewinder.hpp>
 
 /* media keys */
 const int EXTRA_KEY_GAMECENTER = 0x10;

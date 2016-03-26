@@ -8,7 +8,7 @@
 #ifndef MICROSOFT_SIDEWINDER_CLASS_H
 #define MICROSOFT_SIDEWINDER_CLASS_H
 
-#include "keyboard.hpp"
+#include <device/keyboard.hpp>
 
 class SideWinder : public Keyboard {
 	public:

@@ -8,7 +8,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "key.hpp"
+#include <component/key.hpp>
 
 /**
  * Assembles relative path to Macro file.

@@ -22,12 +22,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "keyboard.hpp"
-#include "logitech_g105.hpp"
-#include "logitech_g710p.hpp"
-#include "microsoft_sidewinder.hpp"
-#include "sidewinderd.hpp"
-#include "virtual_input.hpp"
+#include <sidewinderd.hpp>
+#include <component/virtual_input.hpp>
+#include <device/keyboard.hpp>
+#include <vendor/logitech/g105.hpp>
+#include <vendor/logitech/g710.hpp>
+#include <vendor/microsoft/sidewinder.hpp>
 
 void sigHandler(int sig) {
 	switch (sig) {

@@ -20,18 +20,18 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include "logitech_g105.hpp"
+#include <vendor/logitech/g710.hpp>
 
-void LogitechG105::featureRequest() {
+void LogitechG710::featureRequest() {
 	unsigned char buf[2];
 	/* buf[0] is Report ID, buf[1] is value */
-	buf[0] = 0x06;
-	buf[1] = 0x01 << profile_;
-	buf[1] |= recordLed_ << 3;
+	buf[0] = 0x6;
+	buf[1] = 0x10 << profile_;
+	buf[1] |= recordLed_ << 7;
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-void LogitechG105::setProfile(int profile) {
+void LogitechG710::setProfile(int profile) {
 	profile_ = profile;
 	featureRequest();
 }
@@ -44,29 +44,29 @@ void LogitechG105::setProfile(int profile) {
  * TODO: only return latest pressed key, if multiple keys have been pressed at
  * the same time.
  */
-struct KeyData LogitechG105::getInput() {
+struct KeyData LogitechG710::getInput() {
 	struct KeyData keyData = KeyData();
 	int key, nBytes;
 	unsigned char buf[MAX_BUF];
 	nBytes = read(fd_, buf, MAX_BUF);
 
-	if (nBytes == 3 && buf[0] == 0x03) {
+	if (nBytes == 4 && buf[0] == 0x03) {
 		/*
 		 * cutting off buf[0], which is used to differentiate between macro and
 		 * media keys. Our task is now to translate the buffer codes to
 		 * something we can work with. Here is a table, where you can look up
 		 * the keys and buffer, if you want to improve the current method:
 		 *
-		 * G1	0x03 0x01 0x00 - buf[1]
-		 * G2	0x03 0x02 0x00 - buf[1]
-		 * G3	0x03 0x04 0x00 - buf[1]
-		 * G4	0x03 0x08 0x00 - buf[1]
-		 * G5	0x03 0x10 0x00 - buf[1]
-		 * G6	0x03 0x20 0x00 - buf[1]
-		 * M1	0x03 0x00 0x01 - buf[2]
-		 * M2	0x03 0x00 0x02 - buf[2]
-		 * M3	0x03 0x00 0x04 - buf[2]
-		 * MR	0x03 0x00 0x08 - buf[2]
+		 * G1	0x03 0x01 0x00 0x00 - buf[1]
+		 * G2	0x03 0x02 0x00 0x00 - buf[1]
+		 * G3	0x03 0x04 0x00 0x00 - buf[1]
+		 * G4	0x03 0x08 0x00 0x00 - buf[1]
+		 * G5	0x03 0x10 0x00 0x00 - buf[1]
+		 * G6	0x03 0x20 0x00 0x00 - buf[1]
+		 * M1	0x03 0x00 0x10 0x00 - buf[2]
+		 * M2	0x03 0x00 0x20 0x00 - buf[2]
+		 * M3	0x03 0x00 0x40 0x00 - buf[2]
+		 * MR	0x03 0x00 0x80 0x00 - buf[2]
 		 */
 		if (buf[2] == 0) {
 			key = (static_cast<int>(buf[1]));
@@ -74,7 +74,7 @@ struct KeyData LogitechG105::getInput() {
 			keyData.index = key;
 			keyData.type = KeyData::KeyType::Macro;
 		} else if (buf[1] == 0) {
-			key = (static_cast<int>(buf[2]));
+			key = (static_cast<int>(buf[2])) >> 4;
 			key = ffs(key);
 			keyData.index = key;
 			keyData.type = KeyData::KeyType::Extra;
@@ -88,7 +88,7 @@ struct KeyData LogitechG105::getInput() {
  * Macro recording captures delays by default. Use the configuration to disable
  * capturing delays.
  */
-void LogitechG105::recordMacro(std::string path) {
+void LogitechG710::recordMacro(std::string path) {
 	struct timeval prev;
 	struct KeyData keyData;
 	prev.tv_usec = 0;
@@ -160,7 +160,7 @@ void LogitechG105::recordMacro(std::string path) {
 	close(evfd_);
 }
 
-void LogitechG105::handleKey(struct KeyData *keyData) {
+void LogitechG710::handleKey(struct KeyData *keyData) {
 	if (keyData->index != 0) {
 		if (keyData->type == KeyData::KeyType::Macro) {
 			Key key(keyData);
@@ -185,7 +185,7 @@ void LogitechG105::handleKey(struct KeyData *keyData) {
 	}
 }
 
-void LogitechG105::handleRecordMode() {
+void LogitechG710::handleRecordMode() {
 	bool isRecordMode = true;
 	recordLed_ = 1;
 	featureRequest();
@@ -214,15 +214,15 @@ void LogitechG105::handleRecordMode() {
 	}
 }
 
-void LogitechG105::disableGhostInput() {
+void LogitechG710::disableGhostInput() {
 	/* we need to zero out the report, so macro keys don't emit numbers */
-	unsigned char buf[7] = {};
+	unsigned char buf[13] = {};
 	/* buf[0] is Report ID */
-	buf[0] = 0x8;
+	buf[0] = 0x9;
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-LogitechG105::LogitechG105(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw) : Keyboard::Keyboard(deviceData, devNode, config, pw) {
+LogitechG710::LogitechG710(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw) : Keyboard::Keyboard(deviceData, devNode, config, pw) {
 	disableGhostInput();
 	featureRequest();
 }

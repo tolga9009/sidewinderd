@@ -12,7 +12,7 @@
 #include <iostream>
 #include <string>
 
-#include "device_data.hpp"
+#include <device_data.hpp>
 
 namespace sidewinderd {
 	std::string version("0.3.1");

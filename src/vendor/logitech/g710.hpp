@@ -5,14 +5,14 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#ifndef LOGITECH_G105_CLASS_H
-#define LOGITECH_G105_CLASS_H
+#ifndef LOGITECH_G710_PLUS_CLASS_H
+#define LOGITECH_G710_PLUS_CLASS_H
 
-#include "keyboard.hpp"
+#include <device/keyboard.hpp>
 
-class LogitechG105 : public Keyboard {
+class LogitechG710 : public Keyboard {
 	public:
-		LogitechG105(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw);
+		LogitechG710(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw);
 
 	protected:
 		struct KeyData getInput();
