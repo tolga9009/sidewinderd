@@ -11,10 +11,10 @@
 #include <string>
 
 #include <poll.h>
-#include <pwd.h>
 
 #include <libconfig.h++>
 
+#include <process.hpp>
 #include <device_data.hpp>
 #include <component/key.hpp>
 #include <component/virtual_input.hpp>
@@ -27,13 +27,13 @@ const int MAX_PROFILE = 3;
 class Keyboard {
 	public:
 		void listen();
-		Keyboard(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw);
+		Keyboard(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
 		~Keyboard();
 
 	protected:
 		int profile_, autoLed_, recordLed_, macroPad_;
 		int fd_, evfd_;
-		struct passwd *pw_;
+		Process *process_;
 		struct pollfd fds[2];
 		libconfig::Config *config_;
 		sidewinderd::DeviceData *deviceData_;

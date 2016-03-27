@@ -95,12 +95,12 @@ void Keyboard::listen() {
 	handleKey(&keyData);
 }
 
-Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw) {
+Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process) {
 	config_ = config;
-	pw_ = pw;
+	process_ = process;
 	deviceData_ = deviceData;
 	devNode_ = devNode;
-	virtInput_ = new VirtualInput(deviceData_, devNode_, pw);
+	virtInput_ = new VirtualInput(deviceData_, devNode_, process_);
 	profile_ = 0;
 	autoLed_ = 0;
 	recordLed_ = 0;
@@ -113,11 +113,11 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData, struct sidewinder
 	}
 
 	/* open file descriptor with root privileges */
-	seteuid(0);
+	process_->privilege();
 	fd_ = open(devNode->hidraw.c_str(), O_RDWR | O_NONBLOCK);
-	seteuid(pw_->pw_uid);
+	process_->unprivilege();
 
-	/* TODO: throw exception if interface can't be accessed, call destructor */
+	/* TODO: destruct, if interface can't be accessed */
 	if (fd_ < 0) {
 		std::cout << "Can't open hidraw interface" << std::endl;
 	}

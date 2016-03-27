@@ -5,14 +5,12 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#ifndef SIDEWINDERD_H
-#define SIDEWINDERD_H
+#ifndef MAIN_H
+#define MAIN_H
 
 #include <atomic>
 #include <iostream>
 #include <string>
-
-#include <device_data.hpp>
 
 namespace sidewinderd {
 	std::string version("0.3.1");

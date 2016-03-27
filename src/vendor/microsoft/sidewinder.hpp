@@ -12,7 +12,7 @@
 
 class SideWinder : public Keyboard {
 	public:
-		SideWinder(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw);
+		SideWinder(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
 
 	protected:
 		struct KeyData getInput();

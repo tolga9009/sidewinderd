@@ -125,9 +125,9 @@ void SideWinder::recordMacro(std::string path) {
 	prev.tv_usec = 0;
 	prev.tv_sec = 0;
 	std::cout << "Start Macro Recording on " << devNode_->inputEvent << std::endl;
-	seteuid(0);
+	process_->privilege();
 	evfd_ = open(devNode_->inputEvent.c_str(), O_RDONLY | O_NONBLOCK);
-	seteuid(pw_->pw_uid);
+	process_->unprivilege();
 
 	if (evfd_ < 0) {
 		std::cout << "Can't open input event file" << std::endl;
@@ -235,6 +235,6 @@ void SideWinder::handleRecordMode() {
 	}
 }
 
-SideWinder::SideWinder(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw) : Keyboard::Keyboard(deviceData, devNode, config, pw) {
+SideWinder::SideWinder(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process) : Keyboard::Keyboard(deviceData, devNode, config, process) {
 	featureRequest();
 }

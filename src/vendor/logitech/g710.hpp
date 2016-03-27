@@ -8,11 +8,12 @@
 #ifndef LOGITECH_G710_PLUS_CLASS_H
 #define LOGITECH_G710_PLUS_CLASS_H
 
+#include <process.hpp>
 #include <device/keyboard.hpp>
 
 class LogitechG710 : public Keyboard {
 	public:
-		LogitechG710(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw);
+		LogitechG710(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
 
 	protected:
 		struct KeyData getInput();

@@ -8,11 +8,12 @@
 #ifndef LOGITECH_G105_CLASS_H
 #define LOGITECH_G105_CLASS_H
 
+#include <process.hpp>
 #include <device/keyboard.hpp>
 
 class LogitechG105 : public Keyboard {
 	public:
-		LogitechG105(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, struct passwd *pw);
+		LogitechG105(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
 
 	protected:
 		struct KeyData getInput();

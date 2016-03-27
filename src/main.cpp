@@ -8,23 +8,15 @@
 #include <cstdlib>
 #include <csignal>
 #include <cstring>
-#include <sstream>
 
-#include <fcntl.h>
 #include <getopt.h>
 #include <libudev.h>
-#include <pwd.h>
-#include <unistd.h>
 
 #include <libconfig.h++>
 
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <sidewinderd.hpp>
-#include <component/virtual_input.hpp>
-#include <device/keyboard.hpp>
+#include <device_data.hpp>
+#include <main.hpp>
+#include <process.hpp>
 #include <vendor/logitech/g105.hpp>
 #include <vendor/logitech/g710.hpp>
 #include <vendor/microsoft/sidewinder.hpp>
@@ -42,69 +34,7 @@ void sigHandler(int sig) {
 	}
 }
 
-int createPid(std::string pidFilePath) {
-	int pidFd = open(pidFilePath.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	if (pidFd < 0) {
-		std::cerr << "PID file could not be created." << std::endl;
-		return -1;
-	}
-
-	if (flock(pidFd, LOCK_EX | LOCK_NB) < 0) {
-		std::cerr << "Could not lock PID file, another instance is already running. Terminating." << std::endl;
-		close(pidFd);
-		return -1;
-	}
-
-	return pidFd;
-}
-
-void closePid(int pidFd, std::string pidFilePath) {
-	flock(pidFd, LOCK_UN);
-	close(pidFd);
-	unlink(pidFilePath.c_str());
-}
-
-int initializeDaemon() {
-	pid_t pid, sid;
-	pid = fork();
-
-	if (pid < 0) {
-		std::cerr << "Error creating daemon." << std::endl;
-		return -1;
-	}
-
-	if (pid > 0) {
-		return 1;
-	}
-
-	sid = setsid();
-
-	if (sid < 0) {
-		std::cerr << "Error setting sid." << std::endl;
-		return -1;
-	}
-
-	pid = fork();
-
-	if (pid < 0) {
-		std::cerr << "Error forking second time." << std::endl;
-		return -1;
-	}
-
-	if (pid > 0) {
-		return 1;
-	}
-
-	umask(0);
-	chdir("/");
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
-
-	return 0;
-}
-
+/* TODO: remove exceptions for better portability */
 void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/sidewinderd.conf") {
 	try {
 		config->readFile(configFilePath.c_str());
@@ -219,13 +149,14 @@ int main(int argc, char *argv[]) {
 	static struct option longOptions[] = {
 		{"config", required_argument, 0, 'c'},
 		{"daemon", no_argument, 0, 'd'},
-		{"verbose", no_argument, 0, 'v'},
+		{"version", no_argument, 0, 'v'},
 		{0, 0, 0, 0}
 	};
 
-	int opt, index, ret;
+	int opt, index = 0;
 	std::string configFilePath;
-	index = 0;
+	/* flags */
+	bool shouldDaemonize;
 
 	while ((opt = getopt_long(argc, argv, ":c:dv", longOptions, &index)) != -1) {
 		switch (opt) {
@@ -233,20 +164,11 @@ int main(int argc, char *argv[]) {
 				configFilePath = optarg;
 				break;
 			case 'd':
-				ret = initializeDaemon();
-
-				if (ret > 0) {
-					return EXIT_SUCCESS;
-				}
-
-				if (ret < 0) {
-					return EXIT_FAILURE;
-				};
-
+				shouldDaemonize = true;
 				break;
 			case 'v':
-				std::cout << "Option --verbose" << std::endl;
-				break;
+				std::cout << "sidewinderd version " << sidewinderd::version << std::endl;
+				return EXIT_SUCCESS;
 			case ':':
 				std::cout << "Missing argument." << std::endl;
 				break;
@@ -268,43 +190,33 @@ int main(int argc, char *argv[]) {
 		setupConfig(&config, configFilePath);
 	}
 
+	/* create object for process information */
+	Process process(&config);
+
+	/* daemonize, if flag has been set */
+	if (shouldDaemonize) {
+		int ret = process.daemonize();
+
+		if (ret > 0) {
+			return EXIT_SUCCESS;
+		} else if (ret < 0) {
+			return EXIT_FAILURE;
+		}
+	}
+
 	/* creating pid file for single instance mechanism */
-	std::string pidFilePath = config.lookup("pid-file");
-	int pidFd = createPid(pidFilePath);
+	int pidFd = process.createPid();
 
 	if (pidFd < 0) {
 		return EXIT_FAILURE;
 	}
 
-	/* get user's home directory */
-	std::string user = config.lookup("user");
-	struct passwd *pw = getpwnam(user.c_str());
 	/* setting gid and uid to configured user */
-	setegid(pw->pw_gid);
-	seteuid(pw->pw_uid);
+	process.applyUser();
 	/* creating sidewinderd directory in user's home directory */
-	std::string workdir = pw->pw_dir;
-	std::string xdgData;
+	process.createWorkdir();
 
-	if (const char *env = std::getenv("XDG_DATA_HOME")) {
-		xdgData = env;
-
-		if (!xdgData.empty()) {
-			workdir = xdgData;
-		}
-	} else {
-		xdgData = "/.local/share";
-		workdir.append(xdgData);
-	}
-
-	workdir.append("/sidewinderd");
-	mkdir(workdir.c_str(), S_IRWXU);
-
-	if (chdir(workdir.c_str())) {
-		std::cerr << "Error accessing working directory." << std::endl;
-	}
-
-	std::clog << "Started sidewinderd v" << sidewinderd::version << "." << std::endl;
+	std::clog << "Started sidewinderd." << std::endl;
 
 	for (auto it: sidewinderd::deviceList) {
 		struct sidewinderd::DeviceData deviceData;
@@ -314,7 +226,7 @@ int main(int argc, char *argv[]) {
 
 		if (findDevice(&deviceData, &devNode) > 0) {
 			if (deviceData.vid == "045e") {
-				SideWinder keyboard(&deviceData, &devNode, &config, pw);
+				SideWinder keyboard(&deviceData, &devNode, &config, &process);
 				/* main loop */
 				/* TODO: exit loop, if keyboards gets unplugged */
 				sidewinderd::isRunning = 1;
@@ -324,7 +236,7 @@ int main(int argc, char *argv[]) {
 				}
 			} else if (deviceData.vid == "046d") {
 				if (deviceData.pid == "c24d") {
-					LogitechG710 keyboard(&deviceData, &devNode, &config, pw);
+					LogitechG710 keyboard(&deviceData, &devNode, &config, &process);
 					/* main loop */
 					/* TODO: exit loop, if keyboards gets unplugged */
 					sidewinderd::isRunning = 1;
@@ -333,7 +245,7 @@ int main(int argc, char *argv[]) {
 					keyboard.listen();
 					}
 				} else if (deviceData.pid == "c248") {
-					LogitechG105 keyboard(&deviceData, &devNode, &config, pw);
+					LogitechG105 keyboard(&deviceData, &devNode, &config, &process);
 					/* main loop */
 					/* TODO: exit loop, if keyboards gets unplugged */
 					sidewinderd::isRunning = 1;
@@ -346,7 +258,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	closePid(pidFd, pidFilePath);
+	process.closePid(pidFd);
 	std::clog << "Stopped sidewinderd." << std::endl;
 
 	return EXIT_SUCCESS;

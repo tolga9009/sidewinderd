@@ -40,8 +40,8 @@ void VirtualInput::sendEvent(short type, short code, int value) {
 /**
  * Constructor setting up operating system specific back-ends.
  */
-VirtualInput::VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, struct passwd *pw) {
-	pw_ = pw;
+VirtualInput::VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, Process *process) {
+	process_ = process;
 	deviceData_ = deviceData;
 	devNode_ = devNode;
 	/* for Linux */
@@ -57,7 +57,7 @@ VirtualInput::~VirtualInput() {
  */
 void VirtualInput::createUidev() {
 	/* open uinput device with root privileges */
-	seteuid(0);
+	process_->privilege();
 	uifd_ = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 
 	if (uifd_ < 0) {
@@ -68,9 +68,8 @@ void VirtualInput::createUidev() {
 		}
 	}
 
-	seteuid(pw_->pw_uid);
-	/* TODO: copy original keyboard's keybits. */
-	/* Currently, we set all keybits, to make things easier. */
+	process_->unprivilege();
+	/* set all keybits */
 	ioctl(uifd_, UI_SET_EVBIT, EV_KEY);
 
 	for (int i = KEY_ESC; i <= KEY_KPDOT; i++) {
@@ -87,6 +86,7 @@ void VirtualInput::createUidev() {
 
 	/* uinput device details */
 	struct uinput_user_dev uidev = uinput_user_dev();
+	/* TODO: copy device's name */
 	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "Sidewinderd");
 	uidev.id.bustype = BUS_USB;
 	uidev.id.vendor = std::stoi(deviceData_->vid, nullptr, 16);

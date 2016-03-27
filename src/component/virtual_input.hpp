@@ -8,8 +8,7 @@
 #ifndef VIRTUALINPUT_CLASS_H
 #define VIRTUALINPUT_CLASS_H
 
-#include <pwd.h>
-
+#include <process.hpp>
 #include <device_data.hpp>
 
 /**
@@ -21,12 +20,12 @@
 class VirtualInput {
 	public:
 		void sendEvent(short type, short code, int value);
-		VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, struct passwd *pw);
+		VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, Process *process);
 		~VirtualInput();
 
 	private:
 		int uifd_; /**< uinput device file descriptor */
-		struct passwd *pw_; /**< configured user for permissions */
+		Process *process_; /**< process object for setting privileges */
 		sidewinderd::DeviceData *deviceData_; /**< device information */
 		sidewinderd::DevNode *devNode_; /**< device information */
 		void createUidev();
