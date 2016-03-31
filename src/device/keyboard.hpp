@@ -16,7 +16,9 @@
 
 #include <process.hpp>
 #include <device_data.hpp>
+#include <component/hid_interface.hpp>
 #include <component/key.hpp>
+#include <component/led.hpp>
 #include <component/virtual_input.hpp>
 
 /* constants */
@@ -31,21 +33,19 @@ class Keyboard {
 		~Keyboard();
 
 	protected:
-		int profile_, autoLed_, recordLed_, macroPad_;
+		int profile_;
 		int fd_, evfd_;
 		Process *process_;
 		struct pollfd fds[2];
 		libconfig::Config *config_;
 		sidewinderd::DeviceData *deviceData_;
 		sidewinderd::DevNode *devNode_;
+		HIDInterface hidInterface_;
 		VirtualInput *virtInput_;
 		virtual struct KeyData getInput() = 0;
-		void featureRequest(unsigned char data = 0x04);
 		void setupPoll();
 		static void playMacro(std::string macroPath, VirtualInput *virtInput);
 		virtual void recordMacro(std::string path) = 0;
-		void toggleMacroPad();
-		void switchProfile();
 		struct KeyData pollDevice(nfds_t nfds);
 		virtual void handleKey(struct KeyData *keyData) = 0;
 		virtual void handleRecordMode() = 0;

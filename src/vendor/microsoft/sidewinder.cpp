@@ -22,29 +22,21 @@
 
 #include <vendor/microsoft/sidewinder.hpp>
 
-/* media keys */
-const int EXTRA_KEY_GAMECENTER = 0x10;
-const int EXTRA_KEY_RECORD = 0x11;
-const int EXTRA_KEY_PROFILE = 0x14;
-
-void SideWinder::featureRequest(unsigned char data) {
-	unsigned char buf[2];
-	/* buf[0] is Report ID, buf[1] is value */
-	buf[0] = 0x7;
-	buf[1] = data << profile_;
-	buf[1] |= macroPad_;
-	buf[1] |= recordLed_ << 5;
-	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
-}
-
 void SideWinder::toggleMacroPad() {
+	/* TODO: set bit, without overriding LEDs */
 	macroPad_ ^= 1;
-	featureRequest();
+	unsigned char buf = macroPad_;
+	hidInterface_.setFeatureReport(SW_FEATURE_REPORT, buf);
 }
 
 void SideWinder::switchProfile() {
 	profile_ = (profile_ + 1) % MAX_PROFILE;
-	featureRequest();
+
+	switch (profile_) {
+		case 0: ledProfile1_.exclusiveOn();
+		case 1: ledProfile2_.exclusiveOn();
+		case 2: ledProfile3_.exclusiveOn();
+	}
 }
 
 /*
@@ -145,9 +137,8 @@ void SideWinder::recordMacro(std::string path) {
 	while (isRecordMode) {
 		keyData = pollDevice(2);
 
-		if (keyData.index == EXTRA_KEY_RECORD && keyData.type == KeyData::KeyType::Extra) {
-			recordLed_ = 0;
-			featureRequest();
+		if (keyData.index == SW_KEY_RECORD && keyData.type == KeyData::KeyType::Extra) {
+			ledRecord_.off();
 			isRecordMode = false;
 		}
 
@@ -198,11 +189,11 @@ void SideWinder::handleKey(struct KeyData *keyData) {
 		std::thread thread(playMacro, macroPath, virtInput_);
 		thread.detach();
 	} else if (keyData->type == KeyData::KeyType::Extra) {
-		if (keyData->index == EXTRA_KEY_GAMECENTER) {
+		if (keyData->index == SW_KEY_GAMECENTER) {
 			toggleMacroPad();
-		} else if (keyData->index == EXTRA_KEY_RECORD) {
+		} else if (keyData->index == SW_KEY_RECORD) {
 			handleRecordMode();
-		} else if (keyData->index == EXTRA_KEY_PROFILE) {
+		} else if (keyData->index == SW_KEY_PROFILE) {
 			switchProfile();
 		}
 	}
@@ -210,31 +201,38 @@ void SideWinder::handleKey(struct KeyData *keyData) {
 
 void SideWinder::handleRecordMode() {
 	bool isRecordMode = true;
-	recordLed_ = 3;
-	featureRequest();
+	/* record LED solid light */
+	ledRecord_.on();
 
 	while (isRecordMode) {
 		struct KeyData keyData = pollDevice(1);
 
 		if (keyData.type == KeyData::KeyType::Macro) {
-			recordLed_ = 2;
-			featureRequest();
+			/* record LED should blink */
+			ledRecord_.blink();
 			isRecordMode = false;
 			Key key(&keyData);
 			recordMacro(key.getMacroPath(profile_));
 		} else if (keyData.type == KeyData::KeyType::Extra) {
 			/* deactivate Record LED */
-			recordLed_ = 0;
-			featureRequest();
+			ledRecord_.off();
 			isRecordMode = false;
 
-			if (keyData.index != EXTRA_KEY_RECORD) {
+			if (keyData.index != SW_KEY_RECORD) {
 				handleKey(&keyData);
 			}
 		}
 	}
 }
 
-SideWinder::SideWinder(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process) : Keyboard::Keyboard(deviceData, devNode, config, process) {
-	featureRequest();
+SideWinder::SideWinder(sidewinderd::DeviceData *deviceData,
+		sidewinderd::DevNode *devNode, libconfig::Config *config,
+		Process *process) :
+		Keyboard::Keyboard(deviceData, devNode, config, process),
+		ledProfile1_{SW_FEATURE_REPORT, SW_LED_P1, &hidInterface_},
+		ledProfile2_{SW_FEATURE_REPORT, SW_LED_P2, &hidInterface_},
+		ledProfile3_{SW_FEATURE_REPORT, SW_LED_P3, &hidInterface_},
+		ledRecord_{SW_FEATURE_REPORT, SW_LED_RECORD, &hidInterface_},
+		ledAuto_{SW_FEATURE_REPORT, SW_LED_AUTO, &hidInterface_} {
+	ledProfile1_.exclusiveOn();
 }

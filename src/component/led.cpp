@@ -10,14 +10,17 @@
 void LED::on() {
 }
 
+void LED::exclusiveOn() {
+}
+
 void LED::off() {
 }
 
 void LED::blink() {
 }
 
-void LED::privateStuff() {
-}
-
-LED::LED(int bit) {
+LED::LED(unsigned char report, unsigned char led, HIDInterface *hidInterface) {
+	report_ = report;
+	led_ = led;
+	hidInterface_ = hidInterface;
 }

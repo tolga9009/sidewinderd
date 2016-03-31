@@ -10,18 +10,34 @@
 
 #include <device/keyboard.hpp>
 
+const unsigned char SW_FEATURE_REPORT = 0x07;
+const unsigned char SW_LED_AUTO = 0x02;
+const unsigned char SW_LED_P1 = 0x04;
+const unsigned char SW_LED_P2 = 0x08;
+const unsigned char SW_LED_P3 = 0x10;
+const unsigned char SW_LED_RECORD = 0x20;
+const unsigned char SW_LED_RECORD_BLINK = 0x40;
+const int SW_KEY_GAMECENTER = 0x10;
+const int SW_KEY_RECORD = 0x11;
+const int SW_KEY_PROFILE = 0x14;
+
 class SideWinder : public Keyboard {
 	public:
 		SideWinder(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
 
 	protected:
 		struct KeyData getInput();
-		void featureRequest(unsigned char data = 0x04);
 		void recordMacro(std::string path);
 		void handleKey(struct KeyData *keyData);
 		void handleRecordMode();
 
 	private:
+		int macroPad_;
+		LED ledProfile1_;
+		LED ledProfile2_;
+		LED ledProfile3_;
+		LED ledRecord_;
+		LED ledAuto_;
 		void toggleMacroPad();
 		void switchProfile();
 };

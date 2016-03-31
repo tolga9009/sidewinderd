@@ -8,15 +8,20 @@
 #ifndef LED_CLASS_H
 #define LED_CLASS_H
 
+#include <component/hid_interface.hpp>
+
 class LED {
 	public:
 		void on();
+		void exclusiveOn();
 		void off();
 		void blink();
-		LED(int bit);
+		LED(unsigned char report, unsigned char led, HIDInterface *hidInterface);
 
 	private:
-		void privateStuff();
+		unsigned char report_;
+		unsigned char led_;
+		HIDInterface *hidInterface_;
 };
 
 #endif
