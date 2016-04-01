@@ -27,7 +27,6 @@ class SideWinder : public Keyboard {
 
 	protected:
 		struct KeyData getInput();
-		void recordMacro(std::string path);
 		void handleKey(struct KeyData *keyData);
 		void handleRecordMode();
 

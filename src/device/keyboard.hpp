@@ -45,7 +45,7 @@ class Keyboard {
 		virtual struct KeyData getInput() = 0;
 		void setupPoll();
 		static void playMacro(std::string macroPath, VirtualInput *virtInput);
-		virtual void recordMacro(std::string path) = 0;
+		void recordMacro(std::string path, LED *ledRecord, const int *keyRecord);
 		struct KeyData pollDevice(nfds_t nfds);
 		virtual void handleKey(struct KeyData *keyData) = 0;
 		virtual void handleRecordMode() = 0;

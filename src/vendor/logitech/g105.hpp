@@ -17,6 +17,10 @@ const unsigned char G105_LED_M1 = 0x01;
 const unsigned char G105_LED_M2 = 0x02;
 const unsigned char G105_LED_M3 = 0x04;
 const unsigned char G105_LED_MR = 0x08;
+const int G105_KEY_M1 = 0x01;
+const int G105_KEY_M2 = 0x02;
+const int G105_KEY_M3 = 0x03;
+const int G105_KEY_MR = 0x04;
 
 class LogitechG105 : public Keyboard {
 	public:
@@ -24,7 +28,6 @@ class LogitechG105 : public Keyboard {
 
 	protected:
 		struct KeyData getInput();
-		void recordMacro(std::string path);
 		void handleKey(struct KeyData *keyData);
 		void handleRecordMode();
 
