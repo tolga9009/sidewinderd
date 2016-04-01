@@ -13,12 +13,14 @@
 class LED {
 	public:
 		void on();
-		void exclusiveOn();
 		void off();
 		void blink();
-		LED(unsigned char report, unsigned char led, HIDInterface *hidInterface);
+		LED(unsigned char report, unsigned char led, HIDInterface *hidInterface, bool isExclusive = false, bool isSticky = false, bool hasBlink = false);
 
 	private:
+		bool hasBlink_;
+		bool isExclusive_;
+		bool isSticky_;
 		unsigned char report_;
 		unsigned char led_;
 		HIDInterface *hidInterface_;

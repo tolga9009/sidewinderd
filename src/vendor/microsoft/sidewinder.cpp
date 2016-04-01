@@ -33,9 +33,9 @@ void SideWinder::switchProfile() {
 	profile_ = (profile_ + 1) % MAX_PROFILE;
 
 	switch (profile_) {
-		case 0: ledProfile1_.exclusiveOn();
-		case 1: ledProfile2_.exclusiveOn();
-		case 2: ledProfile3_.exclusiveOn();
+		case 0: ledProfile1_.on();
+		case 1: ledProfile2_.on();
+		case 2: ledProfile3_.on();
 	}
 }
 
@@ -154,10 +154,10 @@ SideWinder::SideWinder(sidewinderd::DeviceData *deviceData,
 		sidewinderd::DevNode *devNode, libconfig::Config *config,
 		Process *process) :
 		Keyboard::Keyboard(deviceData, devNode, config, process),
-		ledProfile1_{SW_FEATURE_REPORT, SW_LED_P1, &hidInterface_},
-		ledProfile2_{SW_FEATURE_REPORT, SW_LED_P2, &hidInterface_},
-		ledProfile3_{SW_FEATURE_REPORT, SW_LED_P3, &hidInterface_},
-		ledRecord_{SW_FEATURE_REPORT, SW_LED_RECORD, &hidInterface_},
+		ledProfile1_{SW_FEATURE_REPORT, SW_LED_P1, &hidInterface_, true},
+		ledProfile2_{SW_FEATURE_REPORT, SW_LED_P2, &hidInterface_, true},
+		ledProfile3_{SW_FEATURE_REPORT, SW_LED_P3, &hidInterface_, true},
+		ledRecord_{SW_FEATURE_REPORT, SW_LED_RECORD, &hidInterface_, false, true},
 		ledAuto_{SW_FEATURE_REPORT, SW_LED_AUTO, &hidInterface_} {
-	ledProfile1_.exclusiveOn();
+	ledProfile1_.on();
 }

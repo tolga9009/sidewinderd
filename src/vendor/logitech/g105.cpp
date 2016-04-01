@@ -26,9 +26,9 @@ void LogitechG105::setProfile(int profile) {
 	profile_ = profile;
 
 	switch (profile_) {
-		case 0: ledProfile1_.exclusiveOn();
-		case 1: ledProfile2_.exclusiveOn();
-		case 2: ledProfile3_.exclusiveOn();
+		case 0: ledProfile1_.on();
+		case 1: ledProfile2_.on();
+		case 2: ledProfile3_.on();
 	}
 }
 
@@ -143,12 +143,12 @@ LogitechG105::LogitechG105(sidewinderd::DeviceData *deviceData,
 		sidewinderd::DevNode *devNode, libconfig::Config *config,
 		Process *process) :
 		Keyboard::Keyboard(deviceData, devNode, config, process),
-		ledProfile1_{G105_FEATURE_REPORT_LED, G105_LED_M1, &hidInterface_},
-		ledProfile2_{G105_FEATURE_REPORT_LED, G105_LED_M2, &hidInterface_},
-		ledProfile3_{G105_FEATURE_REPORT_LED, G105_LED_M3, &hidInterface_},
-		ledRecord_{G105_FEATURE_REPORT_LED, G105_LED_MR, &hidInterface_} {
+		ledProfile1_{G105_FEATURE_REPORT_LED, G105_LED_M1, &hidInterface_, true},
+		ledProfile2_{G105_FEATURE_REPORT_LED, G105_LED_M2, &hidInterface_, true},
+		ledProfile3_{G105_FEATURE_REPORT_LED, G105_LED_M3, &hidInterface_, true},
+		ledRecord_{G105_FEATURE_REPORT_LED, G105_LED_MR, &hidInterface_, false, true} {
 	resetMacroKeys();
 	/* TODO: read from config */
 	/* set initial LED */
-	ledProfile1_.exclusiveOn();
+	ledProfile1_.on();
 }
