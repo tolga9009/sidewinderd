@@ -180,6 +180,7 @@ void Keyboard::handleRecordMode(LED *ledRecord, const int *keyRecord) {
 Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData,
 		struct sidewinderd::DevNode *devNode, libconfig::Config *config,
 		Process *process) : hidInterface_{&fd_} {
+	profile_ = 0;
 	config_ = config;
 	process_ = process;
 	deviceData_ = deviceData;

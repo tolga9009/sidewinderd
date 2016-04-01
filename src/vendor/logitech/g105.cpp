@@ -26,9 +26,9 @@ void LogitechG105::setProfile(int profile) {
 	profile_ = profile;
 
 	switch (profile_) {
-		case 0: ledProfile1_.on();
-		case 1: ledProfile2_.on();
-		case 2: ledProfile3_.on();
+		case 0: ledProfile1_.on(); break;
+		case 1: ledProfile2_.on(); break;
+		case 2: ledProfile3_.on(); break;
 	}
 }
 
