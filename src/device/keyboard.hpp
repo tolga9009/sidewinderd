@@ -48,7 +48,7 @@ class Keyboard {
 		void recordMacro(std::string path, LED *ledRecord, const int *keyRecord);
 		struct KeyData pollDevice(nfds_t nfds);
 		virtual void handleKey(struct KeyData *keyData) = 0;
-		virtual void handleRecordMode() = 0;
+		void handleRecordMode(LED *ledRecord, const int *keyRecord);
 };
 
 #endif

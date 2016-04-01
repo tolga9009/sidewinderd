@@ -99,33 +99,7 @@ void LogitechG105::handleKey(struct KeyData *keyData) {
 				setProfile(2);
 			} else if (keyData->index == G105_KEY_MR) {
 				/* MR key */
-				handleRecordMode();
-			}
-		}
-	}
-}
-
-void LogitechG105::handleRecordMode() {
-	bool isRecordMode = true;
-	ledRecord_.on();
-
-	while (isRecordMode) {
-		struct KeyData keyData = pollDevice(1);
-
-		if (keyData.index != 0) {
-			if (keyData.type == KeyData::KeyType::Macro) {
-				ledRecord_.on();
-				isRecordMode = false;
-				Key key(&keyData);
-				recordMacro(key.getMacroPath(profile_), &ledRecord_, &G105_KEY_MR);
-			} else if (keyData.type == KeyData::KeyType::Extra) {
-				/* deactivate Record LED */
-				ledRecord_.off();
-				isRecordMode = false;
-
-				if (keyData.index != G105_KEY_MR) {
-					handleKey(&keyData);
-				}
+				handleRecordMode(&ledRecord_, &G105_KEY_MR);
 			}
 		}
 	}
