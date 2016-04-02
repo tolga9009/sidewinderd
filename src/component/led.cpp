@@ -25,19 +25,21 @@ void LED::off() {
 }
 
 void LED::blink() {
-	/* TODO: some keyboards have a built-in value for record LED, others need a
-	 * timer, turning record LED on and off.
-	 */
-	if (hasBlink_) {
-		/* TODO: implementation */
+	if (blink_) {
+		unsigned char buf = hidInterface_->getFeatureReport(report_);
+		buf &= ~led_;
+		buf |= blink_;
+		hidInterface_->setFeatureReport(report_, buf);
+	} else {
+		/* TODO: implement record LED using a timer */
 	}
 }
 
-LED::LED(unsigned char report, unsigned char led, HIDInterface *hidInterface, bool isExclusive, bool isSticky, bool hasBlink) {
+LED::LED(unsigned char report, unsigned char led, HIDInterface *hidInterface, bool isExclusive, bool isSticky, unsigned char blink) {
 	report_ = report;
 	led_ = led;
 	hidInterface_ = hidInterface;
 	isExclusive_ = isExclusive;
 	isSticky_ = isSticky;
-	hasBlink_ = hasBlink;
+	blink_ = blink;
 }

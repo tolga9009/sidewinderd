@@ -131,7 +131,7 @@ SideWinder::SideWinder(sidewinderd::DeviceData *deviceData,
 		ledProfile1_{SW_FEATURE_REPORT, SW_LED_P1, &hidInterface_, true},
 		ledProfile2_{SW_FEATURE_REPORT, SW_LED_P2, &hidInterface_, true},
 		ledProfile3_{SW_FEATURE_REPORT, SW_LED_P3, &hidInterface_, true},
-		ledRecord_{SW_FEATURE_REPORT, SW_LED_RECORD, &hidInterface_, false, true},
+		ledRecord_{SW_FEATURE_REPORT, SW_LED_RECORD, &hidInterface_, false, true, SW_LED_RECORD_BLINK},
 		ledAuto_{SW_FEATURE_REPORT, SW_LED_AUTO, &hidInterface_} {
 	ledProfile1_.on();
 }
