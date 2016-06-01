@@ -6,8 +6,9 @@
  */
 
 #include <cstdlib>
-#include <csignal>
 #include <cstring>
+#include <iostream>
+#include <string>
 
 #include <getopt.h>
 #include <libudev.h>
@@ -15,24 +16,10 @@
 #include <libconfig.h++>
 
 #include <device_data.hpp>
-#include <main.hpp>
 #include <process.hpp>
 #include <vendor/logitech/g105.hpp>
 #include <vendor/logitech/g710.hpp>
 #include <vendor/microsoft/sidewinder.hpp>
-
-void sigHandler(int sig) {
-	switch (sig) {
-		case SIGINT:
-			sidewinderd::isRunning = 0;
-			break;
-		case SIGTERM:
-			sidewinderd::isRunning = 0;
-			break;
-		default:
-			std::cerr << "Unknown signal received." << std::endl;
-	}
-}
 
 /* TODO: remove exceptions for better portability */
 void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/sidewinderd.conf") {
@@ -139,11 +126,11 @@ int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::D
 }
 
 int main(int argc, char *argv[]) {
-	/* signal handling */
-	struct sigaction action;
-	action.sa_handler = sigHandler;
-	sigaction(SIGINT, &action, nullptr);
-	sigaction(SIGTERM, &action, nullptr);
+	/* object for managing runtime information */
+	Process process;
+
+	/* set program name */
+	process.setName(argv[0]);
 
 	/* handling command-line options */
 	static struct option longOptions[] = {
@@ -155,8 +142,9 @@ int main(int argc, char *argv[]) {
 
 	int opt, index = 0;
 	std::string configFilePath;
+
 	/* flags */
-	bool shouldDaemonize;
+	bool shouldDaemonize = false;
 
 	while ((opt = getopt_long(argc, argv, ":c:dv", longOptions, &index)) != -1) {
 		switch (opt) {
@@ -167,7 +155,7 @@ int main(int argc, char *argv[]) {
 				shouldDaemonize = true;
 				break;
 			case 'v':
-				std::cout << "sidewinderd version " << sidewinderd::version << std::endl;
+				std::cout << "sidewinderd version " << process.getVersion() << std::endl;
 				return EXIT_SUCCESS;
 			case ':':
 				std::cout << "Missing argument." << std::endl;
@@ -190,9 +178,6 @@ int main(int argc, char *argv[]) {
 		setupConfig(&config, configFilePath);
 	}
 
-	/* create object for process information */
-	Process process(&config);
-
 	/* daemonize, if flag has been set */
 	if (shouldDaemonize) {
 		int ret = process.daemonize();
@@ -205,14 +190,13 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* creating pid file for single instance mechanism */
-	int pidFd = process.createPid();
-
-	if (pidFd < 0) {
+	if (process.createPid(config.lookup("pid-file"))) {
 		return EXIT_FAILURE;
 	}
 
 	/* setting gid and uid to configured user */
-	process.applyUser();
+	process.applyUser(config.lookup("user"));
+
 	/* creating sidewinderd directory in user's home directory */
 	process.createWorkdir();
 
@@ -229,9 +213,9 @@ int main(int argc, char *argv[]) {
 				SideWinder keyboard(&deviceData, &devNode, &config, &process);
 				/* main loop */
 				/* TODO: exit loop, if keyboards gets unplugged */
-				sidewinderd::isRunning = 1;
+				process.setActive(true);
 
-				while (sidewinderd::isRunning) {
+				while (process.isActive()) {
 					keyboard.listen();
 				}
 			} else if (deviceData.vid == "046d") {
@@ -239,18 +223,18 @@ int main(int argc, char *argv[]) {
 					LogitechG710 keyboard(&deviceData, &devNode, &config, &process);
 					/* main loop */
 					/* TODO: exit loop, if keyboards gets unplugged */
-					sidewinderd::isRunning = 1;
+					process.setActive(true);
 
-					while (sidewinderd::isRunning) {
-					keyboard.listen();
+					while (process.isActive()) {
+						keyboard.listen();
 					}
 				} else if (deviceData.pid == "c248") {
 					LogitechG105 keyboard(&deviceData, &devNode, &config, &process);
 					/* main loop */
 					/* TODO: exit loop, if keyboards gets unplugged */
-					sidewinderd::isRunning = 1;
+					process.setActive(true);
 
-					while (sidewinderd::isRunning) {
+					while (process.isActive()) {
 						keyboard.listen();
 					}
 				}
@@ -258,7 +242,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	process.closePid(pidFd);
+	process.destroyPid();
 	std::clog << "Stopped sidewinderd." << std::endl;
 
 	return EXIT_SUCCESS;

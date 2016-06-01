@@ -8,28 +8,37 @@
 #ifndef PROCESS_CLASS_H
 #define PROCESS_CLASS_H
 
+#include <atomic>
 #include <string>
 
 #include <pwd.h>
 
-#include <libconfig.h++>
-
 class Process {
 	public:
+		static bool isActive();
+		static void setActive(bool isActive);
+		std::string getName();
+		void setName(std::string name);
 		int daemonize();
-		int createPid();
-		void closePid(int pidFd);
-		void applyUser();
+		int createPid(std::string pidPath);
+		void destroyPid();
+		void applyUser(std::string user);
 		void createWorkdir();
 		void privilege();
 		void unprivilege();
-		Process(libconfig::Config *config);
+		std::string getVersion();
+		Process();
+		~Process();
 
 	private:
-		std::string pidFilePath_;
+		static std::atomic<bool> isActive_;
+		bool hasPid_;
+		int pidFd_;
+		std::string name_;
 		std::string user_;
+		std::string pidPath_;
 		struct passwd *pw_;
-		libconfig::Config *config_;
+		static void sigHandler(int sig);
 };
 
 #endif
