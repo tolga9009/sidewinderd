@@ -22,6 +22,18 @@
 
 #include <vendor/microsoft/sidewinder.hpp>
 
+/* constants */
+const unsigned char SW_FEATURE_REPORT = 0x07;
+const unsigned char SW_LED_AUTO = 0x02;
+const unsigned char SW_LED_P1 = 0x04;
+const unsigned char SW_LED_P2 = 0x08;
+const unsigned char SW_LED_P3 = 0x10;
+const unsigned char SW_LED_RECORD = 0x60;
+const unsigned char SW_LED_RECORD_BLINK = 0x40;
+const int SW_KEY_GAMECENTER = 0x10;
+const int SW_KEY_RECORD = 0x11;
+const int SW_KEY_PROFILE = 0x14;
+
 void SideWinder::toggleMacroPad() {
 	/* TODO: set bit, without overriding LEDs */
 	macroPad_ ^= 1;
@@ -49,9 +61,9 @@ void SideWinder::switchProfile() {
  */
 struct KeyData SideWinder::getInput() {
 	struct KeyData keyData = KeyData();
-	int key, nBytes;
+	int key;
 	unsigned char buf[MAX_BUF];
-	nBytes = read(fd_, buf, MAX_BUF);
+	auto nBytes = read(fd_, buf, MAX_BUF);
 
 	if (nBytes == 5 && buf[0] == 8) {
 		/*

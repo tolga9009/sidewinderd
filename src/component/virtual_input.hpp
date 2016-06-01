@@ -19,7 +19,7 @@
  */
 class VirtualInput {
 	public:
-		void sendEvent(short type, short code, int value);
+		void sendEvent(unsigned short type, unsigned short code, int value);
 		VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, Process *process);
 		~VirtualInput();
 

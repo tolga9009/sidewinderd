@@ -22,6 +22,19 @@
 
 #include <vendor/logitech/g105.hpp>
 
+/* constants */
+const unsigned char G105_FEATURE_REPORT_LED = 0x06;
+const unsigned char G105_FEATURE_REPORT_MACRO = 0x08;
+const int G105_FEATURE_REPORT_MACRO_SIZE = 7;
+const unsigned char G105_LED_M1 = 0x01;
+const unsigned char G105_LED_M2 = 0x02;
+const unsigned char G105_LED_M3 = 0x04;
+const unsigned char G105_LED_MR = 0x08;
+const int G105_KEY_M1 = 0x01;
+const int G105_KEY_M2 = 0x02;
+const int G105_KEY_M3 = 0x03;
+const int G105_KEY_MR = 0x04;
+
 void LogitechG105::setProfile(int profile) {
 	profile_ = profile;
 
@@ -42,9 +55,9 @@ void LogitechG105::setProfile(int profile) {
  */
 struct KeyData LogitechG105::getInput() {
 	struct KeyData keyData = KeyData();
-	int key, nBytes;
+	int key;
 	unsigned char buf[MAX_BUF];
-	nBytes = read(fd_, buf, MAX_BUF);
+	auto nBytes = read(fd_, buf, MAX_BUF);
 
 	if (nBytes == 3 && buf[0] == 0x03) {
 		/*

@@ -25,7 +25,7 @@
  * @param value value the event carries, e.g. EV_KEY: 0 represents release, 1
  * keypress and 2 autorepeat
  */
-void VirtualInput::sendEvent(short type, short code, int value) {
+void VirtualInput::sendEvent(unsigned short type, unsigned short code, int value) {
 	struct input_event inev = input_event();
 	inev.type = type;
 	inev.code = code;

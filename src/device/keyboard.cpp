@@ -40,11 +40,12 @@ void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
 		for (tinyxml2::XMLElement* child = root->FirstChildElement(); child; child = child->NextSiblingElement()) {
 			if (child->Name() == std::string("KeyBoardEvent")) {
 				bool isPressed;
-				int key = std::atoi(child->GetText());
+				auto key = static_cast<unsigned short>(std::atoi(child->GetText()));
 				child->QueryBoolAttribute("Down", &isPressed);
 				virtInput->sendEvent(EV_KEY, key, isPressed);
 			} else if (child->Name() == std::string("DelayEvent")) {
-				int delay = std::atoi(child->GetText());
+				auto delay = std::atol(child->GetText());
+				// TODO replace with C++11 std::chrono
 				struct timespec request, remain;
 				/*
 				 * value is given in milliseconds, so we need to split it into
@@ -101,11 +102,11 @@ void Keyboard::recordMacro(std::string path, LED *ledRecord, const int *keyRecor
 		if (inev.type == EV_KEY && inev.value != 2) {
 			/* only capturing delays, if capture_delays is set to true */
 			if (prev.tv_usec && config_->lookup("capture_delays")) {
-				long int diff = (inev.time.tv_usec + 1000000 * inev.time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
-				int delay = diff / 1000;
+				auto diff = (inev.time.tv_usec + 1000000 * inev.time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
+				auto delay = diff / 1000;
 				/* start element "DelayEvent" */
 				tinyxml2::XMLElement* DelayEvent = doc.NewElement("DelayEvent");
-				DelayEvent->SetText(delay);
+				DelayEvent->SetText(static_cast<int>(delay));
 				root->InsertEndChild(DelayEvent);
 			}
 

@@ -22,6 +22,19 @@
 
 #include <vendor/logitech/g710.hpp>
 
+/* constants */
+const unsigned char G710_FEATURE_REPORT_LED = 0x06;
+const unsigned char G710_FEATURE_REPORT_MACRO = 0x09;
+const int G710_FEATURE_REPORT_MACRO_SIZE = 13;
+const unsigned char G710_LED_M1 = 0x10;
+const unsigned char G710_LED_M2 = 0x20;
+const unsigned char G710_LED_M3 = 0x40;
+const unsigned char G710_LED_MR = 0x80;
+const int G710_KEY_M1 = 0x01;
+const int G710_KEY_M2 = 0x02;
+const int G710_KEY_M3 = 0x03;
+const int G710_KEY_MR = 0x04;
+
 void LogitechG710::setProfile(int profile) {
 	profile_ = profile;
 
@@ -42,9 +55,9 @@ void LogitechG710::setProfile(int profile) {
  */
 struct KeyData LogitechG710::getInput() {
 	struct KeyData keyData = KeyData();
-	int key, nBytes;
+	int key;
 	unsigned char buf[MAX_BUF];
-	nBytes = read(fd_, buf, MAX_BUF);
+	auto nBytes = read(fd_, buf, MAX_BUF);
 
 	if (nBytes == 4 && buf[0] == 0x03) {
 		/*
