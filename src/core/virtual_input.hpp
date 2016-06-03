@@ -9,7 +9,7 @@
 #define VIRTUALINPUT_CLASS_H
 
 #include <process.hpp>
-#include <device_data.hpp>
+#include <core/device_data.hpp>
 
 /**
  * Class representing a virtual input device.

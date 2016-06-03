@@ -15,8 +15,8 @@
 
 #include <libconfig.h++>
 
-#include <device_data.hpp>
 #include <process.hpp>
+#include <core/device_data.hpp>
 #include <vendor/logitech/g105.hpp>
 #include <vendor/logitech/g710.hpp>
 #include <vendor/microsoft/sidewinder.hpp>

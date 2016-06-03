@@ -8,7 +8,7 @@
 #ifndef LOGITECH_G710_CLASS_H
 #define LOGITECH_G710_CLASS_H
 
-#include <device/keyboard.hpp>
+#include <core/keyboard.hpp>
 
 class LogitechG710 : public Keyboard {
 	public:

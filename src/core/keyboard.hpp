@@ -15,11 +15,11 @@
 #include <libconfig.h++>
 
 #include <process.hpp>
-#include <device_data.hpp>
-#include <component/hid_interface.hpp>
-#include <component/key.hpp>
-#include <component/led.hpp>
-#include <component/virtual_input.hpp>
+#include <core/device_data.hpp>
+#include <core/hid_interface.hpp>
+#include <core/key.hpp>
+#include <core/led.hpp>
+#include <core/virtual_input.hpp>
 
 /* constants */
 const int MAX_BUF = 8;

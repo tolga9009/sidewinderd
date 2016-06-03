@@ -19,7 +19,7 @@
 
 #include <sys/stat.h>
 
-#include <device/keyboard.hpp>
+#include <core/keyboard.hpp>
 
 void Keyboard::setupPoll() {
 	fds[0].fd = fd_;

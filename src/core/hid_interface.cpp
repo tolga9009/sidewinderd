@@ -11,7 +11,7 @@
 
 #include <sys/ioctl.h>
 
-#include <component/hid_interface.hpp>
+#include <core/hid_interface.hpp>
 
 unsigned char HIDInterface::getFeatureReport(unsigned char report) {
 	unsigned char buf[2] {};

@@ -5,7 +5,7 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#include <component/led.hpp>
+#include <core/led.hpp>
 
 void LED::on() {
 	/* TODO: dont override sticky LEDs */

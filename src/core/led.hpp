@@ -8,7 +8,7 @@
 #ifndef LED_CLASS_H
 #define LED_CLASS_H
 
-#include <component/hid_interface.hpp>
+#include <core/hid_interface.hpp>
 
 class LED {
 	public:

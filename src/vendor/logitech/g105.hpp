@@ -8,7 +8,7 @@
 #ifndef LOGITECH_G105_CLASS_H
 #define LOGITECH_G105_CLASS_H
 
-#include <device/keyboard.hpp>
+#include <core/keyboard.hpp>
 
 class LogitechG105 : public Keyboard {
 	public:
