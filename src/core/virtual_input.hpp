@@ -5,8 +5,8 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#ifndef VIRTUALINPUT_CLASS_H
-#define VIRTUALINPUT_CLASS_H
+#ifndef VIRTUAL_INPUT_CLASS_H
+#define VIRTUAL_INPUT_CLASS_H
 
 #include <process.hpp>
 #include <core/device_data.hpp>
@@ -20,14 +20,13 @@
 class VirtualInput {
 	public:
 		void sendEvent(unsigned short type, unsigned short code, int value);
-		VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, Process *process);
+		VirtualInput(sidewinderd::DeviceData *deviceData, Process *process);
 		~VirtualInput();
 
 	private:
 		int uifd_; /**< uinput device file descriptor */
 		Process *process_; /**< process object for setting privileges */
 		sidewinderd::DeviceData *deviceData_; /**< device information */
-		sidewinderd::DevNode *devNode_; /**< device information */
 		void createUidev();
 };
 

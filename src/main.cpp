@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
 
 	std::clog << "Started sidewinderd." << std::endl;
 
-	for (auto it: sidewinderd::deviceList) {
+	for (auto it : sidewinderd::deviceList) {
 		struct sidewinderd::DeviceData deviceData;
 		struct sidewinderd::DevNode devNode;
 		deviceData.vid = it.vid;

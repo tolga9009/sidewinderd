@@ -8,11 +8,13 @@
 #ifndef HID_INTERFACE_CLASS_H
 #define HID_INTERFACE_CLASS_H
 
-class HIDInterface {
+#include <string>
+
+class HidInterface {
 	public:
 		unsigned char getFeatureReport(unsigned char report);
 		void setFeatureReport(unsigned char report, unsigned char value);
-		HIDInterface(int *fd);
+		HidInterface(int *fd);
 
 	private:
 		int *fd_;

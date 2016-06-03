@@ -7,7 +7,7 @@
 
 #include <core/led.hpp>
 
-void LED::on() {
+void Led::on() {
 	/* TODO: dont override sticky LEDs */
 	if (isExclusive_) {
 		hidInterface_->setFeatureReport(report_, led_);
@@ -18,13 +18,13 @@ void LED::on() {
 	}
 }
 
-void LED::off() {
+void Led::off() {
 	unsigned char buf = hidInterface_->getFeatureReport(report_);
 	buf &= ~led_;
 	hidInterface_->setFeatureReport(report_, buf);
 }
 
-void LED::blink() {
+void Led::blink() {
 	if (blink_) {
 		unsigned char buf = hidInterface_->getFeatureReport(report_);
 		buf &= ~led_;
@@ -35,7 +35,7 @@ void LED::blink() {
 	}
 }
 
-LED::LED(unsigned char report, unsigned char led, HIDInterface *hidInterface, bool isExclusive, bool isSticky, unsigned char blink) {
+Led::Led(unsigned char report, unsigned char led, HidInterface *hidInterface, bool isExclusive, bool isSticky, unsigned char blink) {
 	report_ = report;
 	led_ = led;
 	hidInterface_ = hidInterface;

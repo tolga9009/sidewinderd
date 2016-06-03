@@ -13,7 +13,7 @@
 
 #include <core/hid_interface.hpp>
 
-unsigned char HIDInterface::getFeatureReport(unsigned char report) {
+unsigned char HidInterface::getFeatureReport(unsigned char report) {
 	unsigned char buf[2] {};
 	buf[0] = report;
 	int ret = ioctl(*fd_, HIDIOCGFEATURE(sizeof(buf)), buf);
@@ -28,7 +28,7 @@ unsigned char HIDInterface::getFeatureReport(unsigned char report) {
 	return buf[1];
 }
 
-void HIDInterface::setFeatureReport(unsigned char report, unsigned char value) {
+void HidInterface::setFeatureReport(unsigned char report, unsigned char value) {
 	unsigned char buf[2];
 	/* buf[0] is Report ID, buf[1] is value */
 	buf[0] = report;
@@ -44,6 +44,6 @@ void HIDInterface::setFeatureReport(unsigned char report, unsigned char value) {
 	}
 }
 
-HIDInterface::HIDInterface(int *fd) {
+HidInterface::HidInterface(int *fd) {
 	fd_ = fd;
 }

@@ -65,7 +65,7 @@ void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
  * Macro recording captures delays by default. Use the configuration to disable
  * capturing delays.
  */
-void Keyboard::recordMacro(std::string path, LED *ledRecord, const int *keyRecord) {
+void Keyboard::recordMacro(std::string path, Led *ledRecord, const int *keyRecord) {
 	struct timeval prev;
 	struct KeyData keyData;
 	prev.tv_usec = 0;
@@ -152,7 +152,7 @@ void Keyboard::listen() {
 	handleKey(&keyData);
 }
 
-void Keyboard::handleRecordMode(LED *ledRecord, const int *keyRecord) {
+void Keyboard::handleRecordMode(Led *ledRecord, const int *keyRecord) {
 	bool isRecordMode = true;
 	/* record LED solid light */
 	ledRecord->on();
@@ -186,7 +186,7 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData,
 	process_ = process;
 	deviceData_ = deviceData;
 	devNode_ = devNode;
-	virtInput_ = new VirtualInput(deviceData_, devNode_, process_);
+	virtInput_ = new VirtualInput(deviceData_, process_);
 
 	for (int i = MIN_PROFILE; i < MAX_PROFILE; i++) {
 		std::stringstream profileFolderPath;

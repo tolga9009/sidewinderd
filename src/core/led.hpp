@@ -10,12 +10,13 @@
 
 #include <core/hid_interface.hpp>
 
-class LED {
+class Led {
 	public:
 		void on();
 		void off();
 		void blink();
-		LED(unsigned char report, unsigned char led, HIDInterface *hidInterface, bool isExclusive = false, bool isSticky = false, unsigned char blink = 0);
+		// TODO wtf, this needs to be shorter!
+		Led(unsigned char report, unsigned char led, HidInterface *hidInterface, bool isExclusive = false, bool isSticky = false, unsigned char blink = 0);
 
 	private:
 		bool isExclusive_;
@@ -23,7 +24,7 @@ class LED {
 		unsigned char report_;
 		unsigned char led_;
 		unsigned char blink_;
-		HIDInterface *hidInterface_;
+		HidInterface *hidInterface_;
 };
 
 #endif

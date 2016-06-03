@@ -20,11 +20,11 @@ class SideWinder : public Keyboard {
 
 	private:
 		unsigned char macroPad_;
-		LED ledProfile1_;
-		LED ledProfile2_;
-		LED ledProfile3_;
-		LED ledRecord_;
-		LED ledAuto_;
+		Led ledProfile1_;
+		Led ledProfile2_;
+		Led ledProfile3_;
+		Led ledRecord_;
+		Led ledAuto_;
 		void toggleMacroPad();
 		void switchProfile();
 };

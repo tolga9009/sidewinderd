@@ -5,8 +5,8 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#ifndef DEVICEDATA_CLASS_H
-#define DEVICEDATA_CLASS_H
+#ifndef DEVICE_DATA_CLASS_H
+#define DEVICE_DATA_CLASS_H
 
 #include <string>
 #include <vector>

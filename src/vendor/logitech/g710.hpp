@@ -19,10 +19,10 @@ class LogitechG710 : public Keyboard {
 		void handleKey(struct KeyData *keyData);
 
 	private:
-		LED ledProfile1_;
-		LED ledProfile2_;
-		LED ledProfile3_;
-		LED ledRecord_;
+		Led ledProfile1_;
+		Led ledProfile2_;
+		Led ledProfile3_;
+		Led ledRecord_;
 		void setProfile(int profile);
 		void resetMacroKeys();
 };

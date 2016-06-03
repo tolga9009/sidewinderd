@@ -40,15 +40,15 @@ class Keyboard {
 		libconfig::Config *config_;
 		sidewinderd::DeviceData *deviceData_;
 		sidewinderd::DevNode *devNode_;
-		HIDInterface hidInterface_;
+		HidInterface hidInterface_;
 		VirtualInput *virtInput_;
 		virtual struct KeyData getInput() = 0;
 		void setupPoll();
 		static void playMacro(std::string macroPath, VirtualInput *virtInput);
-		void recordMacro(std::string path, LED *ledRecord, const int *keyRecord);
+		void recordMacro(std::string path, Led *ledRecord, const int *keyRecord);
 		struct KeyData pollDevice(nfds_t nfds);
 		virtual void handleKey(struct KeyData *keyData) = 0;
-		void handleRecordMode(LED *ledRecord, const int *keyRecord);
+		void handleRecordMode(Led *ledRecord, const int *keyRecord);
 };
 
 #endif
