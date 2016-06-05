@@ -16,7 +16,7 @@
 unsigned char HidInterface::getFeatureReport(unsigned char report) {
 	unsigned char buf[2] {};
 	buf[0] = report;
-	int ret = ioctl(*fd_, HIDIOCGFEATURE(sizeof(buf)), buf);
+	int ret = ioctl(fd_, HIDIOCGFEATURE(sizeof(buf)), buf);
 
 	if (ret < 0) {
 		std::cerr << "Error getting HID feature report." << std::endl;
@@ -34,7 +34,7 @@ void HidInterface::setFeatureReport(unsigned char report, unsigned char value) {
 	buf[0] = report;
 	buf[1] = value;
 	/* TODO: check return value */
-	int ret = ioctl(*fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
+	int ret = ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 
 	if (ret < 0) {
 		std::cerr << "Error setting HID feature report." << std::endl;
@@ -44,6 +44,22 @@ void HidInterface::setFeatureReport(unsigned char report, unsigned char value) {
 	}
 }
 
-HidInterface::HidInterface(int *fd) {
-	fd_ = fd;
+std::string HidInterface::getEvent() {
+	return event_;
+}
+
+void HidInterface::setEvent(std::string node) {
+	event_ = node;
+}
+
+std::string HidInterface::getHidraw() {
+	return hidraw_;
+}
+
+void HidInterface::setHidraw(std::string node) {
+	hidraw_ = node;
+}
+
+HidInterface::HidInterface() {
+	fd_ = -1;
 }

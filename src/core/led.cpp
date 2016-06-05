@@ -35,11 +35,18 @@ void Led::blink() {
 	}
 }
 
-Led::Led(unsigned char report, unsigned char led, HidInterface *hidInterface, bool isExclusive, bool isSticky, unsigned char blink) {
+Led::Led(LedType type, unsigned char report, unsigned char led, HidInterface *hidInterface, unsigned char blink) {
+	type_ = type;
 	report_ = report;
 	led_ = led;
 	hidInterface_ = hidInterface;
-	isExclusive_ = isExclusive;
-	isSticky_ = isSticky;
 	blink_ = blink;
+	isExclusive_ = false;
+	isSticky_ = false;
+
+	if (type == LedType::Profile) {
+		isExclusive_ = true;
+	} else if (type == LedType::Record) {
+		isSticky_ = true;
+	}
 }

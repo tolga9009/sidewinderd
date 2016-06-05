@@ -70,9 +70,9 @@ void Keyboard::recordMacro(std::string path, Led *ledRecord, const int *keyRecor
 	struct KeyData keyData;
 	prev.tv_usec = 0;
 	prev.tv_sec = 0;
-	std::cout << "Start Macro Recording on " << devNode_->inputEvent << std::endl;
+	std::cout << "Start Macro Recording on " << hid.getEvent() << std::endl;
 	process_->privilege();
-	evfd_ = open(devNode_->inputEvent.c_str(), O_RDONLY | O_NONBLOCK);
+	evfd_ = open(hid.getEvent().c_str(), O_RDONLY | O_NONBLOCK);
 	process_->unprivilege();
 
 	if (evfd_ < 0) {
@@ -101,7 +101,7 @@ void Keyboard::recordMacro(std::string path, Led *ledRecord, const int *keyRecor
 
 		if (inev.type == EV_KEY && inev.value != 2) {
 			/* only capturing delays, if capture_delays is set to true */
-			if (prev.tv_usec && config_->lookup("capture_delays")) {
+			if (prev.tv_usec && captureDelays_) {
 				auto diff = (inev.time.tv_usec + 1000000 * inev.time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
 				auto delay = diff / 1000;
 				/* start element "DelayEvent" */
@@ -178,15 +178,11 @@ void Keyboard::handleRecordMode(Led *ledRecord, const int *keyRecord) {
 	}
 }
 
-Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData,
-		struct sidewinderd::DevNode *devNode, libconfig::Config *config,
-		Process *process) : hidInterface_{&fd_} {
+Keyboard::Keyboard(Process *process) {
+	captureDelays_ = false;
 	profile_ = 0;
-	config_ = config;
 	process_ = process;
-	deviceData_ = deviceData;
-	devNode_ = devNode;
-	virtInput_ = new VirtualInput(deviceData_, process_);
+	virtInput_ = new VirtualInput(this, process_);
 
 	for (int i = MIN_PROFILE; i < MAX_PROFILE; i++) {
 		std::stringstream profileFolderPath;
@@ -196,7 +192,7 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData,
 
 	/* open file descriptor with root privileges */
 	process_->privilege();
-	fd_ = open(devNode->hidraw.c_str(), O_RDWR | O_NONBLOCK);
+	fd_ = open(hid.getHidraw().c_str(), O_RDWR | O_NONBLOCK);
 	process_->unprivilege();
 
 	/* TODO: destruct, if interface can't be accessed */

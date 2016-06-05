@@ -23,17 +23,17 @@
 #include <vendor/logitech/g710.hpp>
 
 /* constants */
-const unsigned char G710_FEATURE_REPORT_LED = 0x06;
-const unsigned char G710_FEATURE_REPORT_MACRO = 0x09;
-const int G710_FEATURE_REPORT_MACRO_SIZE = 13;
-const unsigned char G710_LED_M1 = 0x10;
-const unsigned char G710_LED_M2 = 0x20;
-const unsigned char G710_LED_M3 = 0x40;
-const unsigned char G710_LED_MR = 0x80;
-const int G710_KEY_M1 = 0x01;
-const int G710_KEY_M2 = 0x02;
-const int G710_KEY_M3 = 0x03;
-const int G710_KEY_MR = 0x04;
+constexpr auto G710_FEATURE_REPORT_LED =	0x06;
+constexpr auto G710_FEATURE_REPORT_MACRO =	0x09;
+constexpr auto G710_FEATURE_REPORT_MACRO_SIZE =	13;
+constexpr auto G710_LED_M1 =			0x10;
+constexpr auto G710_LED_M2 =			0x20;
+constexpr auto G710_LED_M3 =			0x40;
+constexpr auto G710_LED_MR =			0x80;
+constexpr auto G710_KEY_M1 =			0x01;
+constexpr auto G710_KEY_M2 =			0x02;
+constexpr auto G710_KEY_M3 =			0x03;
+constexpr auto G710_KEY_MR =			0x04;
 
 void LogitechG710::setProfile(int profile) {
 	profile_ = profile;
@@ -126,14 +126,12 @@ void LogitechG710::resetMacroKeys() {
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-LogitechG710::LogitechG710(sidewinderd::DeviceData *deviceData,
-		sidewinderd::DevNode *devNode, libconfig::Config *config,
-		Process *process) :
-		Keyboard::Keyboard(deviceData, devNode, config, process),
-		ledProfile1_{G710_FEATURE_REPORT_LED, G710_LED_M1, &hidInterface_, true},
-		ledProfile2_{G710_FEATURE_REPORT_LED, G710_LED_M2, &hidInterface_, true},
-		ledProfile3_{G710_FEATURE_REPORT_LED, G710_LED_M3, &hidInterface_, true},
-		ledRecord_{G710_FEATURE_REPORT_LED, G710_LED_MR, &hidInterface_, false, true} {
+LogitechG710::LogitechG710(Process *process) :
+		Keyboard::Keyboard(process),
+		ledProfile1_{LedType::Profile, G710_FEATURE_REPORT_LED, G710_LED_M1, &hidInterface_},
+		ledProfile2_{LedType::Profile, G710_FEATURE_REPORT_LED, G710_LED_M2, &hidInterface_},
+		ledProfile3_{LedType::Profile, G710_FEATURE_REPORT_LED, G710_LED_M3, &hidInterface_},
+		ledRecord_{LedType::Record, G710_FEATURE_REPORT_LED, G710_LED_MR, &hidInterface_} {
 	resetMacroKeys();
 	/* TODO: read from config */
 	/* set initial LED */

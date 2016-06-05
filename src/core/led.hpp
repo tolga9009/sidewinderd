@@ -10,20 +10,27 @@
 
 #include <core/hid_interface.hpp>
 
+enum class LedType {
+	Unknown,
+	Profile,
+	Record
+};
+
 class Led {
 	public:
 		void on();
 		void off();
 		void blink();
 		// TODO wtf, this needs to be shorter!
-		Led(unsigned char report, unsigned char led, HidInterface *hidInterface, bool isExclusive = false, bool isSticky = false, unsigned char blink = 0);
+		Led(LedType type, unsigned char report, unsigned char led, HidInterface *hidInterface, unsigned char blink = 0);
 
-	private:
+	protected:
 		bool isExclusive_;
 		bool isSticky_;
 		unsigned char report_;
 		unsigned char led_;
 		unsigned char blink_;
+		LedType type_;
 		HidInterface *hidInterface_;
 };
 

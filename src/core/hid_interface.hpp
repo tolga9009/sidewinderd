@@ -14,10 +14,16 @@ class HidInterface {
 	public:
 		unsigned char getFeatureReport(unsigned char report);
 		void setFeatureReport(unsigned char report, unsigned char value);
-		HidInterface(int *fd);
+		std::string getEvent();
+		void setEvent(std::string node);
+		std::string getHidraw();
+		void setHidraw(std::string node);
+		HidInterface();
 
 	private:
-		int *fd_;
+		int fd_;
+		std::string event_;
+		std::string hidraw_;
 };
 
 #endif

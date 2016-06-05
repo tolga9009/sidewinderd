@@ -12,7 +12,7 @@
 
 class LogitechG710 : public Keyboard {
 	public:
-		LogitechG710(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
+		LogitechG710(Process *process);
 
 	protected:
 		struct KeyData getInput();

@@ -23,16 +23,16 @@
 #include <vendor/microsoft/sidewinder.hpp>
 
 /* constants */
-const unsigned char SW_FEATURE_REPORT = 0x07;
-const unsigned char SW_LED_AUTO = 0x02;
-const unsigned char SW_LED_P1 = 0x04;
-const unsigned char SW_LED_P2 = 0x08;
-const unsigned char SW_LED_P3 = 0x10;
-const unsigned char SW_LED_RECORD = 0x60;
-const unsigned char SW_LED_RECORD_BLINK = 0x40;
-const int SW_KEY_GAMECENTER = 0x10;
-const int SW_KEY_RECORD = 0x11;
-const int SW_KEY_PROFILE = 0x14;
+constexpr auto SW_FEATURE_REPORT =	0x07;
+constexpr auto SW_LED_AUTO =		0x02;
+constexpr auto SW_LED_P1 =		0x04;
+constexpr auto SW_LED_P2 =		0x08;
+constexpr auto SW_LED_P3 =		0x10;
+constexpr auto SW_LED_RECORD =		0x60;
+constexpr auto SW_LED_RECORD_BLINK =	0x40;
+constexpr auto SW_KEY_GAMECENTER =	0x10;
+constexpr auto SW_KEY_RECORD =		0x11;
+constexpr auto SW_KEY_PROFILE =		0x14;
 
 void SideWinder::toggleMacroPad() {
 	/* TODO: set bit, without overriding LEDs */
@@ -136,14 +136,12 @@ void SideWinder::handleKey(struct KeyData *keyData) {
 	}
 }
 
-SideWinder::SideWinder(sidewinderd::DeviceData *deviceData,
-		sidewinderd::DevNode *devNode, libconfig::Config *config,
-		Process *process) :
-		Keyboard::Keyboard(deviceData, devNode, config, process),
-		ledProfile1_{SW_FEATURE_REPORT, SW_LED_P1, &hidInterface_, true},
-		ledProfile2_{SW_FEATURE_REPORT, SW_LED_P2, &hidInterface_, true},
-		ledProfile3_{SW_FEATURE_REPORT, SW_LED_P3, &hidInterface_, true},
-		ledRecord_{SW_FEATURE_REPORT, SW_LED_RECORD, &hidInterface_, false, true, SW_LED_RECORD_BLINK},
-		ledAuto_{SW_FEATURE_REPORT, SW_LED_AUTO, &hidInterface_} {
+SideWinder::SideWinder(Process *process) :
+		Keyboard::Keyboard(process),
+		ledProfile1_{LedType::Profile, SW_FEATURE_REPORT, SW_LED_P1, &hidInterface_},
+		ledProfile2_{LedType::Profile, SW_FEATURE_REPORT, SW_LED_P2, &hidInterface_},
+		ledProfile3_{LedType::Profile, SW_FEATURE_REPORT, SW_LED_P3, &hidInterface_},
+		ledRecord_{LedType::Record, SW_FEATURE_REPORT, SW_LED_RECORD, &hidInterface_, SW_LED_RECORD_BLINK},
+		ledAuto_{LedType::Unknown, SW_FEATURE_REPORT, SW_LED_AUTO, &hidInterface_} {
 	ledProfile1_.on();
 }

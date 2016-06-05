@@ -23,17 +23,17 @@
 #include <vendor/logitech/g105.hpp>
 
 /* constants */
-const unsigned char G105_FEATURE_REPORT_LED = 0x06;
-const unsigned char G105_FEATURE_REPORT_MACRO = 0x08;
-const int G105_FEATURE_REPORT_MACRO_SIZE = 7;
-const unsigned char G105_LED_M1 = 0x01;
-const unsigned char G105_LED_M2 = 0x02;
-const unsigned char G105_LED_M3 = 0x04;
-const unsigned char G105_LED_MR = 0x08;
-const int G105_KEY_M1 = 0x01;
-const int G105_KEY_M2 = 0x02;
-const int G105_KEY_M3 = 0x03;
-const int G105_KEY_MR = 0x04;
+constexpr auto G105_FEATURE_REPORT_LED =	0x06;
+constexpr auto G105_FEATURE_REPORT_MACRO =	0x08;
+constexpr auto G105_FEATURE_REPORT_MACRO_SIZE =	7;
+constexpr auto G105_LED_M1 =			0x01;
+constexpr auto G105_LED_M2 =			0x02;
+constexpr auto G105_LED_M3 =			0x04;
+constexpr auto G105_LED_MR =			0x08;
+constexpr auto G105_KEY_M1 =			0x01;
+constexpr auto G105_KEY_M2 =			0x02;
+constexpr auto G105_KEY_M3 =			0x03;
+constexpr auto G105_KEY_MR =			0x04;
 
 void LogitechG105::setProfile(int profile) {
 	profile_ = profile;
@@ -126,14 +126,12 @@ void LogitechG105::resetMacroKeys() {
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-LogitechG105::LogitechG105(sidewinderd::DeviceData *deviceData,
-		sidewinderd::DevNode *devNode, libconfig::Config *config,
-		Process *process) :
-		Keyboard::Keyboard(deviceData, devNode, config, process),
-		ledProfile1_{G105_FEATURE_REPORT_LED, G105_LED_M1, &hidInterface_, true},
-		ledProfile2_{G105_FEATURE_REPORT_LED, G105_LED_M2, &hidInterface_, true},
-		ledProfile3_{G105_FEATURE_REPORT_LED, G105_LED_M3, &hidInterface_, true},
-		ledRecord_{G105_FEATURE_REPORT_LED, G105_LED_MR, &hidInterface_, false, true} {
+LogitechG105::LogitechG105(Process *process) :
+		Keyboard::Keyboard(process),
+		ledProfile1_{LedType::Profile, G105_FEATURE_REPORT_LED, G105_LED_M1, &hidInterface_},
+		ledProfile2_{LedType::Profile, G105_FEATURE_REPORT_LED, G105_LED_M2, &hidInterface_},
+		ledProfile3_{LedType::Profile, G105_FEATURE_REPORT_LED, G105_LED_M3, &hidInterface_},
+		ledRecord_{LedType::Record, G105_FEATURE_REPORT_LED, G105_LED_MR, &hidInterface_} {
 	resetMacroKeys();
 	/* TODO: read from config */
 	/* set initial LED */

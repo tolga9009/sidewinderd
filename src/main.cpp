@@ -16,10 +16,7 @@
 #include <libconfig.h++>
 
 #include <process.hpp>
-#include <core/device_data.hpp>
-#include <vendor/logitech/g105.hpp>
-#include <vendor/logitech/g710.hpp>
-#include <vendor/microsoft/sidewinder.hpp>
+#include <core/device_manager.hpp>
 
 /* TODO: remove exceptions for better portability */
 void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/sidewinderd.conf") {
@@ -54,75 +51,6 @@ void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/s
 	} catch (const libconfig::FileIOException &fioex) {
 		std::cerr << "I/O error while writing file." << std::endl;
 	}
-}
-
-int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::DevNode *devNode) {
-	struct udev *udev;
-	struct udev_device *dev;
-	struct udev_enumerate *enumerate;
-	struct udev_list_entry *devices, *devListEntry;
-	bool isFound = false;
-	udev = udev_new();
-
-	if (!udev) {
-		std::cerr << "Can't create udev." << std::endl;
-		return -1;
-	}
-
-	enumerate = udev_enumerate_new(udev);
-	udev_enumerate_add_match_subsystem(enumerate, "hidraw");
-	udev_enumerate_add_match_subsystem(enumerate, "input");
-	udev_enumerate_scan_devices(enumerate);
-	devices = udev_enumerate_get_list_entry(enumerate);
-
-	udev_list_entry_foreach(devListEntry, devices) {
-		const char *sysPath, *devNodePath;
-		sysPath = udev_list_entry_get_name(devListEntry);
-		dev = udev_device_new_from_syspath(udev, sysPath);
-
-		if (std::string(udev_device_get_subsystem(dev)) == std::string("hidraw")) {
-			devNodePath = udev_device_get_devnode(dev);
-			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
-
-			if (!dev) {
-				std::cerr << "Unable to find parent device." << std::endl;
-			}
-
-			if (std::string(udev_device_get_sysattr_value(dev, "bInterfaceNumber")) == std::string("01")) {
-				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
-
-				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == deviceData->vid) {
-					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == deviceData->pid) {
-						std::clog << "Found device: " << deviceData->vid << ":" << deviceData->pid << std::endl;
-						isFound = true;
-						devNode->hidraw = devNodePath;
-					}
-				}
-			}
-		}
-
-		/* find correct /dev/input/event* file */
-		if (std::string(udev_device_get_subsystem(dev)) == std::string("input")
-			&& udev_device_get_property_value(dev, "ID_MODEL_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == deviceData->pid
-			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == deviceData->vid
-			&& udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM")) == "00"
-			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
-			&& strstr(sysPath, "event")
-			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
-				devNode->inputEvent = udev_device_get_devnode(dev);
-		}
-
-		udev_device_unref(dev);
-	}
-
-	/* free the enumerator object */
-	udev_enumerate_unref(enumerate);
-	udev_unref(udev);
-
-	return isFound;
 }
 
 int main(int argc, char *argv[]) {
@@ -202,44 +130,12 @@ int main(int argc, char *argv[]) {
 
 	std::clog << "Started sidewinderd." << std::endl;
 
-	for (auto it : sidewinderd::deviceList) {
-		struct sidewinderd::DeviceData deviceData;
-		struct sidewinderd::DevNode devNode;
-		deviceData.vid = it.vid;
-		deviceData.pid = it.pid;
+	DeviceManager deviceManager(&process);
 
-		if (findDevice(&deviceData, &devNode) > 0) {
-			if (deviceData.vid == "045e") {
-				SideWinder keyboard(&deviceData, &devNode, &config, &process);
-				/* main loop */
-				/* TODO: exit loop, if keyboards gets unplugged */
-				process.setActive(true);
+	// TODO implement delays: config_->lookup("capture_delays")
 
-				while (process.isActive()) {
-					keyboard.listen();
-				}
-			} else if (deviceData.vid == "046d") {
-				if (deviceData.pid == "c24d") {
-					LogitechG710 keyboard(&deviceData, &devNode, &config, &process);
-					/* main loop */
-					/* TODO: exit loop, if keyboards gets unplugged */
-					process.setActive(true);
-
-					while (process.isActive()) {
-						keyboard.listen();
-					}
-				} else if (deviceData.pid == "c248") {
-					LogitechG105 keyboard(&deviceData, &devNode, &config, &process);
-					/* main loop */
-					/* TODO: exit loop, if keyboards gets unplugged */
-					process.setActive(true);
-
-					while (process.isActive()) {
-						keyboard.listen();
-					}
-				}
-			}
-		}
+	while(process.isActive()) {
+		deviceManager.monitor();
 	}
 
 	process.destroyPid();

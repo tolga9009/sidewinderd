@@ -12,13 +12,11 @@
 
 #include <poll.h>
 
-#include <libconfig.h++>
-
 #include <process.hpp>
-#include <core/device_data.hpp>
 #include <core/hid_interface.hpp>
 #include <core/key.hpp>
 #include <core/led.hpp>
+#include <core/device.hpp>
 #include <core/virtual_input.hpp>
 
 /* constants */
@@ -26,20 +24,18 @@ const int MAX_BUF = 8;
 const int MIN_PROFILE = 0;
 const int MAX_PROFILE = 3;
 
-class Keyboard {
+class Keyboard : public Device {
 	public:
 		void listen();
-		Keyboard(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
+		Keyboard(Process *process);
 		~Keyboard();
 
 	protected:
+		bool captureDelays_;
 		int profile_;
 		int fd_, evfd_;
 		Process *process_;
 		struct pollfd fds[2];
-		libconfig::Config *config_;
-		sidewinderd::DeviceData *deviceData_;
-		sidewinderd::DevNode *devNode_;
 		HidInterface hidInterface_;
 		VirtualInput *virtInput_;
 		virtual struct KeyData getInput() = 0;
