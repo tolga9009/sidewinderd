@@ -8,7 +8,6 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <thread>
 
 #include <libudev.h>
 
@@ -27,6 +26,22 @@ void DeviceManager::monitor() {
 	std::this_thread::sleep_for(std::chrono::seconds(10));
 
 	// scan for new devices
+	discover();
+
+	// check, if any devices have been disconnected
+	check();
+}
+
+void DeviceManager::check() {
+	for (auto it : connectedDevices_) {
+		if(!it.second.isConnected()) {
+			unbind(&it.second);
+		}
+	}
+}
+
+void DeviceManager::discover() {
+	// scan for new devices
 	for (auto it : supportedDevices_) {
 		// TODO overload constructor, quick & dirty copy by hand
 		Device device;
@@ -40,16 +55,19 @@ void DeviceManager::monitor() {
 				case DeviceType::LogitechG105: {
 					LogitechG105 keyboard(process_);
 					bind(&keyboard);
+					keyboard.listen();
 					break;
 				}
 				case DeviceType::LogitechG710: {
 					LogitechG710 keyboard(process_);
 					bind(&keyboard);
+					keyboard.listen();
 					break;
 				}
 				case DeviceType::SideWinder: {
 					SideWinder keyboard(process_);
 					bind(&keyboard);
+					keyboard.listen();
 					break;
 				}
 			}
@@ -129,14 +147,14 @@ int DeviceManager::probe(Device *device) {
 void DeviceManager::bind(Device *device) {
 	// activate device
 	device->connect();
-	connectedDevices_.push_back(*device);
+	connectedDevices_[device->name] = *device;
+	// TODO start thread for keyboard.listen();
 }
 
-//void DeviceManager::unbind(Device *device) {
-//	device->disconnect();
-//	// TODO remove disconnected devices
-//	connectedDevices_.pop_back();
-//}
+void DeviceManager::unbind(Device *device) {
+	connectedDevices_.at(device->name).disconnect();
+	connectedDevices_.erase(device->name);
+}
 
 DeviceManager::DeviceManager(Process *process) {
 	process_ = process;
@@ -150,4 +168,10 @@ DeviceManager::DeviceManager(Process *process) {
 		{VENDOR_LOGITECH, "c24d", "Logitech G710/G710+",
 			DeviceType::LogitechG710}
 	};
+}
+
+DeviceManager::~DeviceManager() {
+	for (auto it : connectedDevices_) {
+		unbind(&it.second);
+	}
 }

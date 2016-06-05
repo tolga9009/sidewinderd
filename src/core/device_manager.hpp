@@ -9,7 +9,9 @@
 #define DEVICE_MANAGER_CLASS_H
 
 #include <array>
+#include <map>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <process.hpp>
@@ -18,14 +20,17 @@
 class DeviceManager {
 	public:
 		void monitor();
+		void discover();
+		void check();
 		int probe(Device *device);
 		void bind(Device *device);
-		//void unbind(Device *device);
+		void unbind(Device *device);
 		DeviceManager(Process *process);
+		~DeviceManager();
 
 	private:
 		std::vector<DeviceId> supportedDevices_;
-		std::vector<Device> connectedDevices_;
+		std::map<std::string, Device> connectedDevices_;
 		Process *process_;
 };
 

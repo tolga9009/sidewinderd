@@ -27,6 +27,7 @@ struct DeviceId {
 
 class Device : public DeviceId {
 	public:
+		bool isConnected();
 		void connect();
 		void disconnect();
 		HidInterface hid;

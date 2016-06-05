@@ -7,6 +7,10 @@
 
 #include <core/device.hpp>
 
+bool Device::isConnected() {
+	return isConnected_;
+}
+
 void Device::connect() {
 	isConnected_ = true;
 }
