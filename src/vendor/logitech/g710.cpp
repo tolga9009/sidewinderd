@@ -20,7 +20,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include <vendor/logitech/g710.hpp>
+#include "g710.hpp"
 
 void LogitechG710::featureRequest() {
 	unsigned char buf[2];

@@ -15,7 +15,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <process.hpp>
+#include "process.hpp"
 
 /* constants */
 constexpr auto version = "0.3.1";

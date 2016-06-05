@@ -5,7 +5,7 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#include <device_data.hpp>
+#include "device_data.hpp"
 
 namespace sidewinderd {
 	std::vector<DeviceData> deviceList = {

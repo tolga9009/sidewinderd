@@ -21,7 +21,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include <device/keyboard.hpp>
+#include "keyboard.hpp"
 
 void Keyboard::featureRequest(unsigned char data) {
 	unsigned char buf[2];

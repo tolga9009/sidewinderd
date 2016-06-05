@@ -15,7 +15,7 @@
 
 #include <sys/ioctl.h>
 
-#include <component/virtual_input.hpp>
+#include "virtual_input.hpp"
 
 /**
  * Method for sending input events to the operating system.
