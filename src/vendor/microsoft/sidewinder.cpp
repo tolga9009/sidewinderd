@@ -22,16 +22,23 @@
 
 #include "sidewinder.hpp"
 
-/* media keys */
-const int EXTRA_KEY_GAMECENTER = 0x10;
-const int EXTRA_KEY_RECORD = 0x11;
-const int EXTRA_KEY_PROFILE = 0x14;
+/* constants */
+constexpr auto SW_FEATURE_REPORT =	0x07;
+constexpr auto SW_LED_AUTO =		0x02;
+constexpr auto SW_LED_P1 =		0x04;
+constexpr auto SW_LED_P2 =		0x08;
+constexpr auto SW_LED_P3 =		0x10;
+constexpr auto SW_LED_RECORD =		0x60;
+constexpr auto SW_LED_RECORD_BLINK =	0x40;
+constexpr auto SW_KEY_GAMECENTER =	0x10;
+constexpr auto SW_KEY_RECORD =		0x11;
+constexpr auto SW_KEY_PROFILE =		0x14;
 
-void SideWinder::featureRequest(unsigned char data) {
+void SideWinder::featureRequest() {
 	unsigned char buf[2];
 	/* buf[0] is Report ID, buf[1] is value */
-	buf[0] = 0x7;
-	buf[1] = data << profile_;
+	buf[0] = SW_FEATURE_REPORT;
+	buf[1] = SW_LED_P1 << profile_;
 	buf[1] |= macroPad_;
 	buf[1] |= recordLed_ << 5;
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
@@ -145,7 +152,7 @@ void SideWinder::recordMacro(std::string path) {
 	while (isRecordMode) {
 		keyData = pollDevice(2);
 
-		if (keyData.index == EXTRA_KEY_RECORD && keyData.type == KeyData::KeyType::Extra) {
+		if (keyData.index == SW_KEY_RECORD && keyData.type == KeyData::KeyType::Extra) {
 			recordLed_ = 0;
 			featureRequest();
 			isRecordMode = false;
@@ -198,11 +205,11 @@ void SideWinder::handleKey(struct KeyData *keyData) {
 		std::thread thread(playMacro, macroPath, virtInput_);
 		thread.detach();
 	} else if (keyData->type == KeyData::KeyType::Extra) {
-		if (keyData->index == EXTRA_KEY_GAMECENTER) {
+		if (keyData->index == SW_KEY_GAMECENTER) {
 			toggleMacroPad();
-		} else if (keyData->index == EXTRA_KEY_RECORD) {
+		} else if (keyData->index == SW_KEY_RECORD) {
 			handleRecordMode();
-		} else if (keyData->index == EXTRA_KEY_PROFILE) {
+		} else if (keyData->index == SW_KEY_PROFILE) {
 			switchProfile();
 		}
 	}
@@ -228,7 +235,7 @@ void SideWinder::handleRecordMode() {
 			featureRequest();
 			isRecordMode = false;
 
-			if (keyData.index != EXTRA_KEY_RECORD) {
+			if (keyData.index != SW_KEY_RECORD) {
 				handleKey(&keyData);
 			}
 		}

@@ -22,11 +22,24 @@
 
 #include "g105.hpp"
 
+/* constants */
+constexpr auto G105_FEATURE_REPORT_LED =	0x06;
+constexpr auto G105_FEATURE_REPORT_MACRO =	0x08;
+constexpr auto G105_FEATURE_REPORT_MACRO_SIZE =	7;
+constexpr auto G105_LED_M1 =			0x01;
+constexpr auto G105_LED_M2 =			0x02;
+constexpr auto G105_LED_M3 =			0x04;
+constexpr auto G105_LED_MR =			0x08;
+constexpr auto G105_KEY_M1 =			0x01;
+constexpr auto G105_KEY_M2 =			0x02;
+constexpr auto G105_KEY_M3 =			0x03;
+constexpr auto G105_KEY_MR =			0x04;
+
 void LogitechG105::featureRequest() {
 	unsigned char buf[2];
 	/* buf[0] is Report ID, buf[1] is value */
-	buf[0] = 0x06;
-	buf[1] = 0x01 << profile_;
+	buf[0] = G105_FEATURE_REPORT_LED;
+	buf[1] = G105_LED_M1 << profile_;
 	buf[1] |= recordLed_ << 3;
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
@@ -168,16 +181,16 @@ void LogitechG105::handleKey(struct KeyData *keyData) {
 			std::thread thread(playMacro, macroPath, virtInput_);
 			thread.detach();
 		} else if (keyData->type == KeyData::KeyType::Extra) {
-			if (keyData->index == 1) {
+			if (keyData->index == G105_KEY_M1) {
 				/* M1 key */
 				setProfile(0);
-			} else if (keyData->index == 2) {
+			} else if (keyData->index == G105_KEY_M2) {
 				/* M2 key */
 				setProfile(1);
-			} else if (keyData->index == 3) {
+			} else if (keyData->index == G105_KEY_M3) {
 				/* M3 key */
 				setProfile(2);
-			} else if (keyData->index == 4) {
+			} else if (keyData->index == G105_KEY_MR) {
 				/* MR key */
 				handleRecordMode();
 			}
@@ -206,7 +219,7 @@ void LogitechG105::handleRecordMode() {
 				featureRequest();
 				isRecordMode = false;
 
-				if (keyData.index != 4) {
+				if (keyData.index != G105_KEY_MR) {
 					handleKey(&keyData);
 				}
 			}
@@ -216,9 +229,9 @@ void LogitechG105::handleRecordMode() {
 
 void LogitechG105::disableGhostInput() {
 	/* we need to zero out the report, so macro keys don't emit numbers */
-	unsigned char buf[7] = {};
+	unsigned char buf[G105_FEATURE_REPORT_MACRO_SIZE] = {};
 	/* buf[0] is Report ID */
-	buf[0] = 0x8;
+	buf[0] = G105_FEATURE_REPORT_MACRO;
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
