@@ -22,6 +22,7 @@ class SideWinder : public Keyboard {
 		void handleRecordMode();
 
 	private:
+		unsigned char macroPad_;
 		void toggleMacroPad();
 		void switchProfile();
 };

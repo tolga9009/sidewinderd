@@ -23,29 +23,12 @@
 
 #include "keyboard.hpp"
 
-void Keyboard::featureRequest(unsigned char data) {
-	unsigned char buf[2];
-	/* buf[0] is Report ID, buf[1] is value */
-	buf[0] = data;
-	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
-}
-
 void Keyboard::setupPoll() {
 	fds[0].fd = fd_;
 	fds[0].events = POLLIN;
 	/* ignore second fd for now */
 	fds[1].fd = -1;
 	fds[1].events = POLLIN;
-}
-
-void Keyboard::toggleMacroPad() {
-	macroPad_ ^= 1;
-	featureRequest();
-}
-
-void Keyboard::switchProfile() {
-	profile_ = (profile_ + 1) % MAX_PROFILE;
-	featureRequest();
 }
 
 /* TODO: interrupt and exit play_macro when any macro_key has been pressed */
@@ -102,9 +85,7 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData, struct sidewinder
 	devNode_ = devNode;
 	virtInput_ = new VirtualInput(deviceData_, devNode_, process_);
 	profile_ = 0;
-	autoLed_ = 0;
 	recordLed_ = 0;
-	macroPad_ = 0;
 
 	for (int i = MIN_PROFILE; i < MAX_PROFILE; i++) {
 		std::stringstream profileFolderPath;
@@ -122,13 +103,10 @@ Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData, struct sidewinder
 		std::cout << "Can't open hidraw interface" << std::endl;
 	}
 
-	featureRequest();
 	setupPoll();
 }
 
 Keyboard::~Keyboard() {
 	delete virtInput_;
-	recordLed_ = 0;
-	featureRequest(0);
 	close(fd_);
 }
