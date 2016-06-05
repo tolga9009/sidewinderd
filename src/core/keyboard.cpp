@@ -78,14 +78,15 @@ void Keyboard::listen() {
 	handleKey(&keyData);
 }
 
-Keyboard::Keyboard(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process) {
+Keyboard::Keyboard(sidewinderd::DeviceData *deviceData,
+		sidewinderd::DevNode *devNode, libconfig::Config *config,
+		Process *process) : hid_{&fd_} {
 	config_ = config;
 	process_ = process;
 	deviceData_ = deviceData;
 	devNode_ = devNode;
 	virtInput_ = new VirtualInput(deviceData_, devNode_, process_);
 	profile_ = 0;
-	recordLed_ = 0;
 
 	for (int i = MIN_PROFILE; i < MAX_PROFILE; i++) {
 		std::stringstream profileFolderPath;

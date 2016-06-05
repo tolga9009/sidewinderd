@@ -9,6 +9,8 @@
 #define MICROSOFT_SIDEWINDER_CLASS_H
 
 #include <core/keyboard.hpp>
+#include <core/led.hpp>
+#include <core/led_group.hpp>
 
 class SideWinder : public Keyboard {
 	public:
@@ -16,12 +18,17 @@ class SideWinder : public Keyboard {
 
 	protected:
 		struct KeyData getInput();
-		void featureRequest();
 		void recordMacro(std::string path);
 		void handleKey(struct KeyData *keyData);
 		void handleRecordMode();
 
 	private:
+		LedGroup group_;
+		Led ledProfile1_;
+		Led ledProfile2_;
+		Led ledProfile3_;
+		Led ledRecord_;
+		Led ledAuto_;
 		unsigned char macroPad_;
 		void toggleMacroPad();
 		void switchProfile();

@@ -35,18 +35,14 @@ constexpr auto G710_KEY_M2 =			0x02;
 constexpr auto G710_KEY_M3 =			0x03;
 constexpr auto G710_KEY_MR =			0x04;
 
-void LogitechG710::featureRequest() {
-	unsigned char buf[2];
-	/* buf[0] is Report ID, buf[1] is value */
-	buf[0] = G710_FEATURE_REPORT_LED;
-	buf[1] = G710_LED_M1 << profile_;
-	buf[1] |= recordLed_ << 7;
-	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
-}
-
 void LogitechG710::setProfile(int profile) {
 	profile_ = profile;
-	featureRequest();
+
+	switch (profile_) {
+		case 0: ledProfile1_.on(); break;
+		case 1: ledProfile2_.on(); break;
+		case 2: ledProfile3_.on(); break;
+	}
 }
 
 /*
@@ -128,8 +124,7 @@ void LogitechG710::recordMacro(std::string path) {
 		keyData = pollDevice(2);
 
 		if (keyData.index == 4 && keyData.type == KeyData::KeyType::Extra) {
-			recordLed_ = 0;
-			featureRequest();
+			ledRecord_.off();
 			isRecordMode = false;
 		}
 
@@ -200,23 +195,20 @@ void LogitechG710::handleKey(struct KeyData *keyData) {
 
 void LogitechG710::handleRecordMode() {
 	bool isRecordMode = true;
-	recordLed_ = 1;
-	featureRequest();
+	ledRecord_.on();
 
 	while (isRecordMode) {
 		struct KeyData keyData = pollDevice(1);
 
 		if (keyData.index != 0) {
 			if (keyData.type == KeyData::KeyType::Macro) {
-				recordLed_ = 1;
-				featureRequest();
+				ledRecord_.on();
 				isRecordMode = false;
 				Key key(&keyData);
 				recordMacro(key.getMacroPath(profile_));
 			} else if (keyData.type == KeyData::KeyType::Extra) {
 				/* deactivate Record LED */
-				recordLed_ = 0;
-				featureRequest();
+				ledRecord_.off();
 				isRecordMode = false;
 
 				if (keyData.index != G710_KEY_MR) {
@@ -235,7 +227,18 @@ void LogitechG710::disableGhostInput() {
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-LogitechG710::LogitechG710(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process) : Keyboard::Keyboard(deviceData, devNode, config, process) {
+LogitechG710::LogitechG710(sidewinderd::DeviceData *deviceData,
+		sidewinderd::DevNode *devNode, libconfig::Config *config,
+		Process *process) :
+		Keyboard::Keyboard(deviceData, devNode, config, process),
+		group_{&hid_},
+		ledProfile1_{G710_FEATURE_REPORT_LED, G710_LED_M1, &group_},
+		ledProfile2_{G710_FEATURE_REPORT_LED, G710_LED_M2, &group_},
+		ledProfile3_{G710_FEATURE_REPORT_LED, G710_LED_M3, &group_},
+		ledRecord_{G710_FEATURE_REPORT_LED, G710_LED_MR, &group_} {
+	ledProfile1_.setLedType(LedType::Profile);
+	ledProfile2_.setLedType(LedType::Profile);
+	ledProfile3_.setLedType(LedType::Profile);
+	ledRecord_.setLedType(LedType::Indicator);
 	disableGhostInput();
-	featureRequest();
 }

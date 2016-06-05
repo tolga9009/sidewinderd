@@ -16,6 +16,7 @@
 
 #include <process.hpp>
 #include <device_data.hpp>
+#include <core/hid_interface.hpp>
 #include <core/key.hpp>
 #include <core/virtual_input.hpp>
 
@@ -31,13 +32,14 @@ class Keyboard {
 		~Keyboard();
 
 	protected:
-		int profile_, recordLed_;
+		int profile_;
 		int fd_, evfd_;
 		Process *process_;
 		struct pollfd fds[2];
 		libconfig::Config *config_;
 		sidewinderd::DeviceData *deviceData_;
 		sidewinderd::DevNode *devNode_;
+		HidInterface hid_;
 		VirtualInput *virtInput_;
 		virtual struct KeyData getInput() = 0;
 		void setupPoll();

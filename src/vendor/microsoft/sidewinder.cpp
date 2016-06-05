@@ -34,24 +34,19 @@ constexpr auto SW_KEY_GAMECENTER =	0x10;
 constexpr auto SW_KEY_RECORD =		0x11;
 constexpr auto SW_KEY_PROFILE =		0x14;
 
-void SideWinder::featureRequest() {
-	unsigned char buf[2];
-	/* buf[0] is Report ID, buf[1] is value */
-	buf[0] = SW_FEATURE_REPORT;
-	buf[1] = SW_LED_P1 << profile_;
-	buf[1] |= macroPad_;
-	buf[1] |= recordLed_ << 5;
-	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
-}
-
 void SideWinder::toggleMacroPad() {
 	macroPad_ ^= 1;
-	featureRequest();
+	hid_.setReport(SW_FEATURE_REPORT, macroPad_);
 }
 
 void SideWinder::switchProfile() {
 	profile_ = (profile_ + 1) % MAX_PROFILE;
-	featureRequest();
+
+	switch (profile_) {
+		case 0: ledProfile1_.on(); break;
+		case 1: ledProfile2_.on(); break;
+		case 2: ledProfile3_.on(); break;
+	}
 }
 
 /*
@@ -153,8 +148,7 @@ void SideWinder::recordMacro(std::string path) {
 		keyData = pollDevice(2);
 
 		if (keyData.index == SW_KEY_RECORD && keyData.type == KeyData::KeyType::Extra) {
-			recordLed_ = 0;
-			featureRequest();
+			ledRecord_.off();
 			isRecordMode = false;
 		}
 
@@ -217,22 +211,19 @@ void SideWinder::handleKey(struct KeyData *keyData) {
 
 void SideWinder::handleRecordMode() {
 	bool isRecordMode = true;
-	recordLed_ = 3;
-	featureRequest();
+	ledRecord_.on();
 
 	while (isRecordMode) {
 		struct KeyData keyData = pollDevice(1);
 
 		if (keyData.type == KeyData::KeyType::Macro) {
-			recordLed_ = 2;
-			featureRequest();
+			ledRecord_.blink();
 			isRecordMode = false;
 			Key key(&keyData);
 			recordMacro(key.getMacroPath(profile_));
 		} else if (keyData.type == KeyData::KeyType::Extra) {
 			/* deactivate Record LED */
-			recordLed_ = 0;
-			featureRequest();
+			ledRecord_.off();
 			isRecordMode = false;
 
 			if (keyData.index != SW_KEY_RECORD) {
@@ -242,6 +233,20 @@ void SideWinder::handleRecordMode() {
 	}
 }
 
-SideWinder::SideWinder(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process) : Keyboard::Keyboard(deviceData, devNode, config, process) {
-	featureRequest();
+SideWinder::SideWinder(sidewinderd::DeviceData *deviceData,
+		sidewinderd::DevNode *devNode, libconfig::Config *config,
+		Process *process) :
+		Keyboard::Keyboard(deviceData, devNode, config, process),
+		group_{&hid_},
+		ledProfile1_{SW_FEATURE_REPORT, SW_LED_P1, &group_},
+		ledProfile2_{SW_FEATURE_REPORT, SW_LED_P2, &group_},
+		ledProfile3_{SW_FEATURE_REPORT, SW_LED_P3, &group_},
+		ledRecord_{SW_FEATURE_REPORT, SW_LED_RECORD, &group_},
+		ledAuto_{SW_FEATURE_REPORT, SW_LED_AUTO, &group_} {
+	ledProfile1_.setLedType(LedType::Profile);
+	ledProfile2_.setLedType(LedType::Profile);
+	ledProfile3_.setLedType(LedType::Profile);
+	ledRecord_.setLedType(LedType::Indicator);
+	ledRecord_.registerBlink(SW_LED_RECORD_BLINK);
+	ledAuto_.setLedType(LedType::Indicator);
 }
