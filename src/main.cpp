@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include <getopt.h>
@@ -215,7 +216,7 @@ int main(int argc, char *argv[]) {
 				/* TODO: exit loop, if keyboards gets unplugged */
 				process.setActive(true);
 
-				while (process.isActive()) {
+				while (process.isActive() && keyboard.isConnected()) {
 					keyboard.listen();
 				}
 			} else if (deviceData.vid == "046d") {
@@ -225,7 +226,7 @@ int main(int argc, char *argv[]) {
 					/* TODO: exit loop, if keyboards gets unplugged */
 					process.setActive(true);
 
-					while (process.isActive()) {
+					while (process.isActive() && keyboard.isConnected()) {
 						keyboard.listen();
 					}
 				} else if (deviceData.pid == "c248") {
@@ -234,7 +235,7 @@ int main(int argc, char *argv[]) {
 					/* TODO: exit loop, if keyboards gets unplugged */
 					process.setActive(true);
 
-					while (process.isActive()) {
+					while (process.isActive() && keyboard.isConnected()) {
 						keyboard.listen();
 					}
 				}

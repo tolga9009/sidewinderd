@@ -28,11 +28,15 @@ const int MAX_PROFILE = 3;
 
 class Keyboard {
 	public:
+		bool isConnected();
+		void connect();
+		void disconnect();
 		void listen();
 		Keyboard(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
 		~Keyboard();
 
 	protected:
+		bool isConnected_;
 		int profile_;
 		int fd_, evfd_;
 		Process *process_;

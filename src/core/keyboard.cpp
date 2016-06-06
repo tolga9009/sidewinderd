@@ -23,6 +23,18 @@
 
 #include "keyboard.hpp"
 
+bool Keyboard::isConnected() {
+	return isConnected_;
+}
+
+void Keyboard::connect() {
+	isConnected_ = true;
+}
+
+void Keyboard::disconnect() {
+	isConnected_ = false;
+}
+
 void Keyboard::setupPoll() {
 	fds[0].fd = fd_;
 	fds[0].events = POLLIN;
@@ -143,6 +155,14 @@ struct KeyData Keyboard::pollDevice(nfds_t nfds) {
 	 * leads to a very efficient polling mechanism.
 	 */
 	poll(fds, nfds, -1);
+
+	// check, if device has been disconnected
+	if (fds->revents & POLLHUP || fds->revents & POLLERR) {
+		disconnect();
+
+		return KeyData();
+	}
+
 	struct KeyData keyData = getInput();
 
 	return keyData;
@@ -188,6 +208,7 @@ Keyboard::Keyboard(sidewinderd::DeviceData *deviceData,
 	devNode_ = devNode;
 	virtInput_ = new VirtualInput(deviceData_, devNode_, process_);
 	profile_ = 0;
+	isConnected_ = true;
 
 	for (int i = MIN_PROFILE; i < MAX_PROFILE; i++) {
 		std::stringstream profileFolderPath;
