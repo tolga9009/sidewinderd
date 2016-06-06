@@ -26,7 +26,7 @@ class LogitechG105 : public Keyboard {
 		Led ledProfile3_;
 		Led ledRecord_;
 		void setProfile(int profile);
-		void disableGhostInput();
+		void resetMacroKeys();
 };
 
 #endif

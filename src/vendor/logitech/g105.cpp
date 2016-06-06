@@ -118,7 +118,7 @@ void LogitechG105::handleKey(struct KeyData *keyData) {
 	}
 }
 
-void LogitechG105::disableGhostInput() {
+void LogitechG105::resetMacroKeys() {
 	/* we need to zero out the report, so macro keys don't emit numbers */
 	unsigned char buf[G105_FEATURE_REPORT_MACRO_SIZE] = {};
 	/* buf[0] is Report ID */
@@ -139,5 +139,5 @@ LogitechG105::LogitechG105(sidewinderd::DeviceData *deviceData,
 	ledProfile2_.setLedType(LedType::Profile);
 	ledProfile3_.setLedType(LedType::Profile);
 	ledRecord_.setLedType(LedType::Indicator);
-	disableGhostInput();
+	resetMacroKeys();
 }
