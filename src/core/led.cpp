@@ -13,7 +13,6 @@ void Led::on() {
 
 	if (type_ == LedType::Profile) {
 		// clear out all LEDs, but Indicator LEDs
-		std::cout << std::hex << static_cast<int>(group_->getIndicatorMask()) << std::endl;
 		buf &= group_->getIndicatorMask();
 	}
 
