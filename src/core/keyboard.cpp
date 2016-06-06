@@ -23,12 +23,16 @@
 
 #include "keyboard.hpp"
 
+constexpr auto TIMEOUT =	5000;
+
 bool Keyboard::isConnected() {
 	return isConnected_;
 }
 
 void Keyboard::connect() {
 	isConnected_ = true;
+	listenThread_ = std::thread(&Keyboard::listen, this);
+	listenThread_.join();
 }
 
 void Keyboard::disconnect() {
@@ -151,10 +155,11 @@ void Keyboard::recordMacro(std::string path, Led *ledRecord, const int keyRecord
 
 struct KeyData Keyboard::pollDevice(nfds_t nfds) {
 	/*
-	 * poll() checks the device for any activities and blocks the loop. This
-	 * leads to a very efficient polling mechanism.
+	 * poll() checks the device for any activities and blocks the loop,
+	 * either until an event has occured, or the timeout has been reached.
+	 * This leads to a very efficient polling mechanism.
 	 */
-	poll(fds, nfds, -1);
+	poll(fds, nfds, TIMEOUT);
 
 	// check, if device has been disconnected
 	if (fds->revents & POLLHUP || fds->revents & POLLERR) {
@@ -169,8 +174,10 @@ struct KeyData Keyboard::pollDevice(nfds_t nfds) {
 }
 
 void Keyboard::listen() {
-	struct KeyData keyData = pollDevice(1);
-	handleKey(&keyData);
+	while (process_->isActive() && isConnected()) {
+		struct KeyData keyData = pollDevice(1);
+		handleKey(&keyData);
+	}
 }
 
 void Keyboard::handleRecordMode(Led *ledRecord, const int keyRecord) {

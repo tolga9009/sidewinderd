@@ -9,6 +9,7 @@
 #define KEYBOARD_CLASS_H
 
 #include <string>
+#include <thread>
 
 #include <poll.h>
 
@@ -39,6 +40,7 @@ class Keyboard {
 		bool isConnected_;
 		int profile_;
 		int fd_, evfd_;
+		std::thread listenThread_;
 		Process *process_;
 		struct pollfd fds[2];
 		libconfig::Config *config_;

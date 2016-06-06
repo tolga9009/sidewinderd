@@ -203,6 +203,8 @@ int main(int argc, char *argv[]) {
 
 	std::clog << "Started sidewinderd." << std::endl;
 
+	process.setActive(true);
+
 	for (auto it: sidewinderd::deviceList) {
 		struct sidewinderd::DeviceData deviceData;
 		struct sidewinderd::DevNode devNode;
@@ -213,31 +215,16 @@ int main(int argc, char *argv[]) {
 			if (deviceData.vid == "045e") {
 				SideWinder keyboard(&deviceData, &devNode, &config, &process);
 				/* main loop */
-				/* TODO: exit loop, if keyboards gets unplugged */
-				process.setActive(true);
-
-				while (process.isActive() && keyboard.isConnected()) {
-					keyboard.listen();
-				}
+				keyboard.connect();
 			} else if (deviceData.vid == "046d") {
 				if (deviceData.pid == "c24d") {
 					LogitechG710 keyboard(&deviceData, &devNode, &config, &process);
 					/* main loop */
-					/* TODO: exit loop, if keyboards gets unplugged */
-					process.setActive(true);
-
-					while (process.isActive() && keyboard.isConnected()) {
-						keyboard.listen();
-					}
+					keyboard.connect();
 				} else if (deviceData.pid == "c248") {
 					LogitechG105 keyboard(&deviceData, &devNode, &config, &process);
 					/* main loop */
-					/* TODO: exit loop, if keyboards gets unplugged */
-					process.setActive(true);
-
-					while (process.isActive() && keyboard.isConnected()) {
-						keyboard.listen();
-					}
+					keyboard.connect();
 				}
 			}
 		}
