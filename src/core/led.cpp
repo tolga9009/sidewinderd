@@ -72,4 +72,7 @@ Led::Led(unsigned char report, unsigned char led, LedGroup *group) {
 	blink_ = 0;
 	type_ = LedType::Common;
 	hid_ = group_->getHidInterface();
+
+	// initial LED state is off
+	off();
 }

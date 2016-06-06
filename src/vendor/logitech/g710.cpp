@@ -140,4 +140,7 @@ LogitechG710::LogitechG710(sidewinderd::DeviceData *deviceData,
 	ledProfile3_.setLedType(LedType::Profile);
 	ledRecord_.setLedType(LedType::Indicator);
 	resetMacroKeys();
+
+	// set initial LED
+	ledProfile1_.on();
 }

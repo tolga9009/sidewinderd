@@ -150,4 +150,7 @@ SideWinder::SideWinder(sidewinderd::DeviceData *deviceData,
 	ledRecord_.setLedType(LedType::Indicator);
 	ledRecord_.registerBlink(SW_LED_RECORD_BLINK);
 	ledAuto_.setLedType(LedType::Indicator);
+
+	// set initial LED
+	ledProfile1_.on();
 }
