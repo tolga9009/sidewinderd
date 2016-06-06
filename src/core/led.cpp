@@ -9,7 +9,8 @@
 #include <core/led.hpp>
 
 void Led::on() {
-	auto buf = hid_->getReport(report_);
+	auto report = hid_->getReport(report_);
+	auto buf = report;
 
 	if (type_ == LedType::Profile) {
 		// clear out all LEDs, but Indicator LEDs
@@ -17,7 +18,11 @@ void Led::on() {
 	}
 
 	buf |= led_;
-	hid_->setReport(report_, buf);
+
+	// don't call, if there are no changes
+	if (buf != report) {
+		hid_->setReport(report_, buf);
+	}
 }
 
 void Led::off() {
@@ -40,7 +45,9 @@ void Led::blink() {
 		 * been called. 1 second on, 1 second off sounds like a good
 		 * rhythm. It would be perfect, if one could interrupt the blink
 		 * anytime, even in a this_thread::wait_for().
+		 * Until it's implemented, let's use a solid light.
 		 */
+		on();
 	}
 }
 
