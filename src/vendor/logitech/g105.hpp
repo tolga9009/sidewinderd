@@ -18,7 +18,6 @@ class LogitechG105 : public Keyboard {
 	protected:
 		struct KeyData getInput();
 		void handleKey(struct KeyData *keyData);
-		void handleRecordMode();
 
 	private:
 		LedGroup group_;

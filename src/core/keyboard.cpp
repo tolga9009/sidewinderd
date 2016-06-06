@@ -153,6 +153,32 @@ void Keyboard::listen() {
 	handleKey(&keyData);
 }
 
+void Keyboard::handleRecordMode(Led *ledRecord, const int keyRecord) {
+	bool isRecordMode = true;
+	/* record LED solid light */
+	ledRecord->on();
+
+	while (isRecordMode) {
+		struct KeyData keyData = pollDevice(1);
+
+		if (keyData.type == KeyData::KeyType::Macro) {
+			/* record LED should blink */
+			ledRecord->blink();
+			isRecordMode = false;
+			Key key(&keyData);
+			recordMacro(key.getMacroPath(profile_), ledRecord, keyRecord);
+		} else if (keyData.type == KeyData::KeyType::Extra) {
+			/* deactivate Record LED */
+			ledRecord->off();
+			isRecordMode = false;
+
+			if (keyData.index != keyRecord) {
+				handleKey(&keyData);
+			}
+		}
+	}
+}
+
 Keyboard::Keyboard(sidewinderd::DeviceData *deviceData,
 		sidewinderd::DevNode *devNode, libconfig::Config *config,
 		Process *process) : hid_{&fd_} {

@@ -127,33 +127,9 @@ void SideWinder::handleKey(struct KeyData *keyData) {
 		if (keyData->index == SW_KEY_GAMECENTER) {
 			toggleMacroPad();
 		} else if (keyData->index == SW_KEY_RECORD) {
-			handleRecordMode();
+			handleRecordMode(&ledRecord_, SW_KEY_RECORD);
 		} else if (keyData->index == SW_KEY_PROFILE) {
 			switchProfile();
-		}
-	}
-}
-
-void SideWinder::handleRecordMode() {
-	bool isRecordMode = true;
-	ledRecord_.on();
-
-	while (isRecordMode) {
-		struct KeyData keyData = pollDevice(1);
-
-		if (keyData.type == KeyData::KeyType::Macro) {
-			ledRecord_.blink();
-			isRecordMode = false;
-			Key key(&keyData);
-			recordMacro(key.getMacroPath(profile_), &ledRecord_, SW_KEY_RECORD);
-		} else if (keyData.type == KeyData::KeyType::Extra) {
-			/* deactivate Record LED */
-			ledRecord_.off();
-			isRecordMode = false;
-
-			if (keyData.index != SW_KEY_RECORD) {
-				handleKey(&keyData);
-			}
 		}
 	}
 }
