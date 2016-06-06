@@ -9,7 +9,6 @@
 #define LOGITECH_G710_PLUS_CLASS_H
 
 #include <core/keyboard.hpp>
-#include <core/led.hpp>
 #include <core/led_group.hpp>
 
 class LogitechG710 : public Keyboard {
@@ -18,7 +17,6 @@ class LogitechG710 : public Keyboard {
 
 	protected:
 		struct KeyData getInput();
-		void recordMacro(std::string path);
 		void handleKey(struct KeyData *keyData);
 		void handleRecordMode();
 

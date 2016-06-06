@@ -93,81 +93,6 @@ struct KeyData LogitechG710::getInput() {
 	return keyData;
 }
 
-/*
- * Macro recording captures delays by default. Use the configuration to disable
- * capturing delays.
- */
-void LogitechG710::recordMacro(std::string path) {
-	struct timeval prev;
-	struct KeyData keyData;
-	prev.tv_usec = 0;
-	prev.tv_sec = 0;
-	std::cout << "Start Macro Recording on " << devNode_->inputEvent << std::endl;
-	process_->privilege();
-	evfd_ = open(devNode_->inputEvent.c_str(), O_RDONLY | O_NONBLOCK);
-	process_->unprivilege();
-
-	if (evfd_ < 0) {
-		std::cout << "Can't open input event file" << std::endl;
-	}
-
-	/* additionally monitor /dev/input/event* with poll */
-	fds[1].fd = evfd_;
-	tinyxml2::XMLDocument doc;
-	tinyxml2::XMLNode* root = doc.NewElement("Macro");
-	/* start root element "Macro" */
-	doc.InsertFirstChild(root);
-
-	bool isRecordMode = true;
-
-	while (isRecordMode) {
-		keyData = pollDevice(2);
-
-		if (keyData.index == 4 && keyData.type == KeyData::KeyType::Extra) {
-			ledRecord_.off();
-			isRecordMode = false;
-		}
-
-		struct input_event inev;
-		read(evfd_, &inev, sizeof(struct input_event));
-
-		if (inev.type == EV_KEY && inev.value != 2) {
-			/* only capturing delays, if capture_delays is set to true */
-			if (prev.tv_usec && config_->lookup("capture_delays")) {
-				long int diff = (inev.time.tv_usec + 1000000 * inev.time.tv_sec) - (prev.tv_usec + 1000000 * prev.tv_sec);
-				int delay = diff / 1000;
-				/* start element "DelayEvent" */
-				tinyxml2::XMLElement* DelayEvent = doc.NewElement("DelayEvent");
-				DelayEvent->SetText(delay);
-				root->InsertEndChild(DelayEvent);
-			}
-
-			/* start element "KeyBoardEvent" */
-			tinyxml2::XMLElement* KeyBoardEvent = doc.NewElement("KeyBoardEvent");
-
-			if (inev.value) {
-				KeyBoardEvent->SetAttribute("Down", true);
-			} else {
-				KeyBoardEvent->SetAttribute("Down", false);
-			}
-
-			KeyBoardEvent->SetText(inev.code);
-			root->InsertEndChild(KeyBoardEvent);
-			prev = inev.time;
-		}
-	}
-
-	/* write XML document */
-	if (doc.SaveFile(path.c_str())) {
-		std::cout << "Error XML SaveFile" << std::endl;
-	}
-
-	std::cout << "Exit Macro Recording" << std::endl;
-	/* remove event file from poll fds */
-	fds[1].fd = -1;
-	close(evfd_);
-}
-
 void LogitechG710::handleKey(struct KeyData *keyData) {
 	if (keyData->index != 0) {
 		if (keyData->type == KeyData::KeyType::Macro) {
@@ -205,7 +130,7 @@ void LogitechG710::handleRecordMode() {
 				ledRecord_.on();
 				isRecordMode = false;
 				Key key(&keyData);
-				recordMacro(key.getMacroPath(profile_));
+				recordMacro(key.getMacroPath(profile_), &ledRecord_, G710_KEY_MR);
 			} else if (keyData.type == KeyData::KeyType::Extra) {
 				/* deactivate Record LED */
 				ledRecord_.off();
