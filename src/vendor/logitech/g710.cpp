@@ -126,10 +126,10 @@ void LogitechG710::resetMacroKeys() {
 	ioctl(fd_, HIDIOCSFEATURE(sizeof(buf)), buf);
 }
 
-LogitechG710::LogitechG710(sidewinderd::DeviceData *deviceData,
+LogitechG710::LogitechG710(struct Device *device,
 		sidewinderd::DevNode *devNode, libconfig::Config *config,
 		Process *process) :
-		Keyboard::Keyboard(deviceData, devNode, config, process),
+		Keyboard::Keyboard(device, devNode, config, process),
 		group_{&hid_},
 		ledProfile1_{G710_FEATURE_REPORT_LED, G710_LED_M1, &group_},
 		ledProfile2_{G710_FEATURE_REPORT_LED, G710_LED_M2, &group_},

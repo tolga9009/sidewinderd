@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <getopt.h>
 #include <libudev.h>
@@ -18,6 +19,7 @@
 
 #include <device_data.hpp>
 #include <process.hpp>
+#include <core/device.hpp>
 #include <vendor/logitech/g105.hpp>
 #include <vendor/logitech/g710.hpp>
 #include <vendor/microsoft/sidewinder.hpp>
@@ -57,7 +59,7 @@ void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/s
 	}
 }
 
-int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::DevNode *devNode) {
+int findDevice(struct Device *device, struct sidewinderd::DevNode *devNode) {
 	struct udev *udev;
 	struct udev_device *dev;
 	struct udev_enumerate *enumerate;
@@ -92,9 +94,9 @@ int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::D
 			if (std::string(udev_device_get_sysattr_value(dev, "bInterfaceNumber")) == std::string("01")) {
 				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
 
-				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == deviceData->vid) {
-					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == deviceData->pid) {
-						std::clog << "Found device: " << deviceData->vid << ":" << deviceData->pid << std::endl;
+				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == device->vendor) {
+					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == device->product) {
+						std::clog << "Found device: " << device->vendor << ":" << device->product << std::endl;
 						isFound = true;
 						devNode->hidraw = devNodePath;
 					}
@@ -105,9 +107,9 @@ int findDevice(struct sidewinderd::DeviceData *deviceData, struct sidewinderd::D
 		/* find correct /dev/input/event* file */
 		if (std::string(udev_device_get_subsystem(dev)) == std::string("input")
 			&& udev_device_get_property_value(dev, "ID_MODEL_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == deviceData->pid
+			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == device->product
 			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == deviceData->vid
+			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == device->vendor
 			&& udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM") != NULL
 			&& std::string(udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM")) == "00"
 			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
@@ -203,28 +205,36 @@ int main(int argc, char *argv[]) {
 
 	std::clog << "Started sidewinderd." << std::endl;
 
+	// list of supported devices
+	std::vector<Device> devices = {
+		{"045e", "074b", "Microsoft SideWinder X6", Device::Driver::SideWinder},
+		{"045e", "0768", "Microsoft SideWinder X4", Device::Driver::SideWinder},
+		{"046d", "c248", "Logitech G105", Device::Driver::LogitechG105},
+		{"046d", "c24d", "Logitech G710+", Device::Driver::LogitechG710}
+	};
+
 	process.setActive(true);
 
-	for (auto it: sidewinderd::deviceList) {
-		struct sidewinderd::DeviceData deviceData;
+	for (auto it : devices) {
+		struct Device device = it;
 		struct sidewinderd::DevNode devNode;
-		deviceData.vid = it.vid;
-		deviceData.pid = it.pid;
 
-		if (findDevice(&deviceData, &devNode) > 0) {
-			if (deviceData.vid == "045e") {
-				SideWinder keyboard(&deviceData, &devNode, &config, &process);
-				/* main loop */
-				keyboard.connect();
-			} else if (deviceData.vid == "046d") {
-				if (deviceData.pid == "c24d") {
-					LogitechG710 keyboard(&deviceData, &devNode, &config, &process);
-					/* main loop */
+		if (findDevice(&device, &devNode) > 0) {
+			switch (device.driver) {
+				case Device::Driver::LogitechG105: {
+					LogitechG105 keyboard(&device, &devNode, &config, &process);
 					keyboard.connect();
-				} else if (deviceData.pid == "c248") {
-					LogitechG105 keyboard(&deviceData, &devNode, &config, &process);
-					/* main loop */
+					break;
+				}
+				case Device::Driver::LogitechG710: {
+					LogitechG710 keyboard(&device, &devNode, &config, &process);
 					keyboard.connect();
+					break;
+				}
+				case Device::Driver::SideWinder: {
+					SideWinder keyboard(&device, &devNode, &config, &process);
+					keyboard.connect();
+					break;
 				}
 			}
 		}

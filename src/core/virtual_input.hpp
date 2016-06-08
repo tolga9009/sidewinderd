@@ -10,6 +10,7 @@
 
 #include <process.hpp>
 #include <device_data.hpp>
+#include <core/device.hpp>
 
 /**
  * Class representing a virtual input device.
@@ -20,13 +21,13 @@
 class VirtualInput {
 	public:
 		void sendEvent(short type, short code, int value);
-		VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, Process *process);
+		VirtualInput(struct Device *device, sidewinderd::DevNode *devNode, Process *process);
 		~VirtualInput();
 
 	private:
 		int uifd_; /**< uinput device file descriptor */
 		Process *process_; /**< process object for setting privileges */
-		sidewinderd::DeviceData *deviceData_; /**< device information */
+		Device *device_; /**< device information */
 		sidewinderd::DevNode *devNode_; /**< device information */
 		void createUidev();
 };

@@ -17,6 +17,7 @@
 
 #include <process.hpp>
 #include <device_data.hpp>
+#include <core/device.hpp>
 #include <core/hid_interface.hpp>
 #include <core/key.hpp>
 #include <core/led.hpp>
@@ -33,7 +34,7 @@ class Keyboard {
 		void connect();
 		void disconnect();
 		void listen();
-		Keyboard(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
+		Keyboard(struct Device *device, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
 		~Keyboard();
 
 	protected:
@@ -43,8 +44,8 @@ class Keyboard {
 		std::thread listenThread_;
 		Process *process_;
 		struct pollfd fds[2];
+		struct Device *device_;
 		libconfig::Config *config_;
-		sidewinderd::DeviceData *deviceData_;
 		sidewinderd::DevNode *devNode_;
 		HidInterface hid_;
 		VirtualInput *virtInput_;

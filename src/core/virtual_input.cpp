@@ -40,9 +40,9 @@ void VirtualInput::sendEvent(short type, short code, int value) {
 /**
  * Constructor setting up operating system specific back-ends.
  */
-VirtualInput::VirtualInput(sidewinderd::DeviceData *deviceData, sidewinderd::DevNode *devNode, Process *process) {
+VirtualInput::VirtualInput(struct Device *device, sidewinderd::DevNode *devNode, Process *process) {
 	process_ = process;
-	deviceData_ = deviceData;
+	device_ = device;
 	devNode_ = devNode;
 	/* for Linux */
 	createUidev();
@@ -89,8 +89,8 @@ void VirtualInput::createUidev() {
 	/* TODO: copy device's name */
 	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "Sidewinderd");
 	uidev.id.bustype = BUS_USB;
-	uidev.id.vendor = std::stoi(deviceData_->vid, nullptr, 16);
-	uidev.id.product = std::stoi(deviceData_->pid, nullptr, 16);
+	uidev.id.vendor = std::stoi(device_->vendor, nullptr, 16);
+	uidev.id.product = std::stoi(device_->product, nullptr, 16);
 	uidev.id.version = 1;
 	/* write uinput device details */
 	write(uifd_, &uidev, sizeof(struct uinput_user_dev));

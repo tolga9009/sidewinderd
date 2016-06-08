@@ -206,14 +206,14 @@ void Keyboard::handleRecordMode(Led *ledRecord, const int keyRecord) {
 	}
 }
 
-Keyboard::Keyboard(sidewinderd::DeviceData *deviceData,
+Keyboard::Keyboard(struct Device *device,
 		sidewinderd::DevNode *devNode, libconfig::Config *config,
 		Process *process) : hid_{&fd_} {
 	config_ = config;
 	process_ = process;
-	deviceData_ = deviceData;
+	device_ = device;
 	devNode_ = devNode;
-	virtInput_ = new VirtualInput(deviceData_, devNode_, process_);
+	virtInput_ = new VirtualInput(device_, devNode_, process_);
 	profile_ = 0;
 	isConnected_ = true;
 

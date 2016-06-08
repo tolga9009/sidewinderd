@@ -18,18 +18,6 @@ namespace sidewinderd {
 	struct DevNode {
 		std::string hidraw, inputEvent; /**< path to hidraw and input event */
 	};
-
-	/**
-	 * Struct for storing and passing device data.
-	 */
-	struct DeviceData {
-		std::string vid, pid, name; /**< device's VID and PID */
-	};
-
-	/**
-	 * List of supported devices.
-	 */
-	extern std::vector<DeviceData> deviceList;
 };
 
 #endif

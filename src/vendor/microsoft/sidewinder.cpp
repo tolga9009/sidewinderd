@@ -134,10 +134,10 @@ void SideWinder::handleKey(struct KeyData *keyData) {
 	}
 }
 
-SideWinder::SideWinder(sidewinderd::DeviceData *deviceData,
+SideWinder::SideWinder(struct Device *device,
 		sidewinderd::DevNode *devNode, libconfig::Config *config,
 		Process *process) :
-		Keyboard::Keyboard(deviceData, devNode, config, process),
+		Keyboard::Keyboard(device, devNode, config, process),
 		group_{&hid_},
 		ledProfile1_{SW_FEATURE_REPORT, SW_LED_P1, &group_},
 		ledProfile2_{SW_FEATURE_REPORT, SW_LED_P2, &group_},
