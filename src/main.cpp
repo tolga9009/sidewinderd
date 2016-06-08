@@ -5,24 +5,15 @@
  * MIT License. For more information, see LICENSE file.
  */
 
-#include <cstdlib>
-#include <cstring>
 #include <iostream>
-#include <memory>
 #include <string>
-#include <vector>
 
 #include <getopt.h>
-#include <libudev.h>
 
 #include <libconfig.h++>
 
-#include <device_data.hpp>
 #include <process.hpp>
-#include <core/device.hpp>
-#include <vendor/logitech/g105.hpp>
-#include <vendor/logitech/g710.hpp>
-#include <vendor/microsoft/sidewinder.hpp>
+#include <core/device_manager.hpp>
 
 /* TODO: remove exceptions for better portability */
 void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/sidewinderd.conf") {
@@ -57,75 +48,6 @@ void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/s
 	} catch (const libconfig::FileIOException &fioex) {
 		std::cerr << "I/O error while writing file." << std::endl;
 	}
-}
-
-int findDevice(struct Device *device, struct sidewinderd::DevNode *devNode) {
-	struct udev *udev;
-	struct udev_device *dev;
-	struct udev_enumerate *enumerate;
-	struct udev_list_entry *devices, *devListEntry;
-	bool isFound = false;
-	udev = udev_new();
-
-	if (!udev) {
-		std::cerr << "Can't create udev." << std::endl;
-		return -1;
-	}
-
-	enumerate = udev_enumerate_new(udev);
-	udev_enumerate_add_match_subsystem(enumerate, "hidraw");
-	udev_enumerate_add_match_subsystem(enumerate, "input");
-	udev_enumerate_scan_devices(enumerate);
-	devices = udev_enumerate_get_list_entry(enumerate);
-
-	udev_list_entry_foreach(devListEntry, devices) {
-		const char *sysPath, *devNodePath;
-		sysPath = udev_list_entry_get_name(devListEntry);
-		dev = udev_device_new_from_syspath(udev, sysPath);
-
-		if (std::string(udev_device_get_subsystem(dev)) == std::string("hidraw")) {
-			devNodePath = udev_device_get_devnode(dev);
-			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
-
-			if (!dev) {
-				std::cerr << "Unable to find parent device." << std::endl;
-			}
-
-			if (std::string(udev_device_get_sysattr_value(dev, "bInterfaceNumber")) == std::string("01")) {
-				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
-
-				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == device->vendor) {
-					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == device->product) {
-						std::clog << "Found device: " << device->vendor << ":" << device->product << std::endl;
-						isFound = true;
-						devNode->hidraw = devNodePath;
-					}
-				}
-			}
-		}
-
-		/* find correct /dev/input/event* file */
-		if (std::string(udev_device_get_subsystem(dev)) == std::string("input")
-			&& udev_device_get_property_value(dev, "ID_MODEL_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == device->product
-			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == device->vendor
-			&& udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM")) == "00"
-			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
-			&& strstr(sysPath, "event")
-			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
-				devNode->inputEvent = udev_device_get_devnode(dev);
-		}
-
-		udev_device_unref(dev);
-	}
-
-	/* free the enumerator object */
-	udev_enumerate_unref(enumerate);
-	udev_unref(udev);
-
-	return isFound;
 }
 
 int main(int argc, char *argv[]) {
@@ -202,44 +124,12 @@ int main(int argc, char *argv[]) {
 
 	/* creating sidewinderd directory in user's home directory */
 	process.createWorkdir();
-
 	std::clog << "Started sidewinderd." << std::endl;
-
-	// list of supported devices
-	std::vector<Device> devices = {
-		{"045e", "074b", "Microsoft SideWinder X6", Device::Driver::SideWinder},
-		{"045e", "0768", "Microsoft SideWinder X4", Device::Driver::SideWinder},
-		{"046d", "c248", "Logitech G105", Device::Driver::LogitechG105},
-		{"046d", "c24d", "Logitech G710+", Device::Driver::LogitechG710}
-	};
-
 	process.setActive(true);
 
-	for (auto it : devices) {
-		struct Device device = it;
-		struct sidewinderd::DevNode devNode;
+	DeviceManager deviceManager(&config, &process);
 
-		if (findDevice(&device, &devNode) > 0) {
-			switch (device.driver) {
-				case Device::Driver::LogitechG105: {
-					LogitechG105 keyboard(&device, &devNode, &config, &process);
-					keyboard.connect();
-					break;
-				}
-				case Device::Driver::LogitechG710: {
-					LogitechG710 keyboard(&device, &devNode, &config, &process);
-					keyboard.connect();
-					break;
-				}
-				case Device::Driver::SideWinder: {
-					SideWinder keyboard(&device, &devNode, &config, &process);
-					keyboard.connect();
-					break;
-				}
-			}
-		}
-	}
-
+	deviceManager.scan();
 	process.destroyPid();
 	std::clog << "Stopped sidewinderd." << std::endl;
 
