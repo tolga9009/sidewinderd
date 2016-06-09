@@ -57,17 +57,21 @@ int main(int argc, char *argv[]) {
 
 	int opt, index = 0;
 	std::string configFilePath;
+	std::string profileDirPath;
 
 	/* flags */
 	bool shouldDaemonize = false;
 
-	while ((opt = getopt_long(argc, argv, ":c:dv", longOptions, &index)) != -1) {
+	while ((opt = getopt_long(argc, argv, ":c:dp:v", longOptions, &index)) != -1) {
 		switch (opt) {
 			case 'c':
 				configFilePath = optarg;
 				break;
 			case 'd':
 				shouldDaemonize = true;
+				break;
+			case 'p':
+				profileDirPath = optarg;
 				break;
 			case 'v':
 				std::cout << "sidewinderd version " << process.getVersion() << std::endl;
@@ -113,7 +117,11 @@ int main(int argc, char *argv[]) {
 	process.applyUser(config.lookup("user"));
 
 	/* creating sidewinderd directory in user's home directory */
-	process.createWorkdir();
+	if (config.exists("profile-path")) {
+		profileDirPath = config.lookup("profile-path").c_str();
+	}
+
+	process.createWorkdir(profileDirPath);
 	std::clog << "Started sidewinderd." << std::endl;
 	process.setActive(true);
 

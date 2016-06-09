@@ -23,7 +23,7 @@ class Process {
 		int createPid(std::string pidPath);
 		void destroyPid();
 		void applyUser(std::string user);
-		void createWorkdir();
+		void createWorkdir(std::string directory);
 		void privilege();
 		void unprivilege();
 		std::string getVersion();

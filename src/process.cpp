@@ -123,13 +123,18 @@ void Process::applyUser(std::string user) {
 	seteuid(pw_->pw_uid);
 }
 
-void Process::createWorkdir() {
+void Process::createWorkdir(std::string directory) {
 	if (user_.empty()) {
 		return;
 	}
 
 	/* creating sidewinderd directory in user's home directory */
 	std::string workdir = pw_->pw_dir;
+
+	if (!directory.empty()) {
+		workdir = directory;
+	}
+
 	std::string xdgData;
 
 	if (const char *env = std::getenv("XDG_DATA_HOME")) {
