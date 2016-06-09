@@ -31,10 +31,6 @@ void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/s
 		root.add("user", libconfig::Setting::TypeString) = "root";
 	}
 
-	if (!root.exists("profile")) {
-		root.add("profile", libconfig::Setting::TypeInt) = 1;
-	}
-
 	if (!root.exists("capture_delays")) {
 		root.add("capture_delays", libconfig::Setting::TypeBoolean) = true;
 	}
