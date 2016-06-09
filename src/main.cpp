@@ -42,12 +42,6 @@ void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/s
 	if (!root.exists("pid-file")) {
 		root.add("pid-file", libconfig::Setting::TypeString) = "/var/run/sidewinderd.pid";
 	}
-
-	try {
-		config->writeFile(configFilePath.c_str());
-	} catch (const libconfig::FileIOException &fioex) {
-		std::cerr << "I/O error while writing file." << std::endl;
-	}
 }
 
 int main(int argc, char *argv[]) {
