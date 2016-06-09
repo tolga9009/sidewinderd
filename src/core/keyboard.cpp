@@ -86,9 +86,9 @@ void Keyboard::recordMacro(std::string path, Led *ledRecord, const int keyRecord
 	struct KeyData keyData;
 	prev.tv_usec = 0;
 	prev.tv_sec = 0;
-	std::cout << "Start Macro Recording on " << devNode_->inputEvent << std::endl;
+	std::cout << "Start Macro Recording on " << devNode_.inputEvent << std::endl;
 	process_->privilege();
-	evfd_ = open(devNode_->inputEvent.c_str(), O_RDONLY | O_NONBLOCK);
+	evfd_ = open(devNode_.inputEvent.c_str(), O_RDONLY | O_NONBLOCK);
 	process_->unprivilege();
 
 	if (evfd_ < 0) {
@@ -210,9 +210,9 @@ Keyboard::Keyboard(struct Device *device,
 		Process *process) : hid_{&fd_} {
 	config_ = config;
 	process_ = process;
-	device_ = device;
-	devNode_ = devNode;
-	virtInput_ = new VirtualInput(device_, devNode_, process_);
+	device_ = *device;
+	devNode_ = *devNode;
+	virtInput_ = new VirtualInput(&device_, &devNode_, process_);
 	profile_ = 0;
 	isConnected_ = true;
 

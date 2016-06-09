@@ -44,9 +44,9 @@ class Keyboard {
 		std::thread listenThread_;
 		Process *process_;
 		struct pollfd fds[2];
-		struct Device *device_;
+		struct Device device_;
 		libconfig::Config *config_;
-		sidewinderd::DevNode *devNode_;
+		sidewinderd::DevNode devNode_;
 		HidInterface hid_;
 		VirtualInput *virtInput_;
 		virtual struct KeyData getInput() = 0;

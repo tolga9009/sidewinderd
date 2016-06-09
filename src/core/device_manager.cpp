@@ -29,7 +29,6 @@ void DeviceManager::discover() {
 
 			// skip this loop, if device is already connected
 			if (it != connected_.end()) {
-				std::cerr << "already in list" << std::endl;
 				continue;
 			}
 
@@ -141,8 +140,6 @@ int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *dev
 
 				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == device->vendor) {
 					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == device->product) {
-						std::clog << "Found device: " << device->vendor << ":" << device->product << std::endl;
-						isFound = true;
 						devNode->hidraw = devNodePath;
 					}
 				}
@@ -161,6 +158,8 @@ int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *dev
 			&& strstr(sysPath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
 				devNode->inputEvent = udev_device_get_devnode(dev);
+				std::clog << "Found device: " << device->vendor << ":" << device->product << std::endl;
+				isFound = true;
 		}
 
 		udev_device_unref(dev);
