@@ -32,7 +32,6 @@ bool Keyboard::isConnected() {
 void Keyboard::connect() {
 	isConnected_ = true;
 	listenThread_ = std::thread(&Keyboard::listen, this);
-	listenThread_.join();
 }
 
 void Keyboard::disconnect() {
@@ -234,9 +233,17 @@ Keyboard::Keyboard(struct Device *device,
 	}
 
 	setupPoll();
+
+	std::cerr << "Keyboard Constructor" << std::endl;
 }
 
 Keyboard::~Keyboard() {
+	std::cerr << "Keyboard Destructor" << std::endl;
+
+	if (listenThread_.joinable()) {
+		listenThread_.join();
+	}
+
 	delete virtInput_;
 	close(fd_);
 }

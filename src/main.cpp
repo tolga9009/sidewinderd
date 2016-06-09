@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
 
 	DeviceManager deviceManager(&config, &process);
 
-	deviceManager.scan();
+	deviceManager.monitor();
 	process.destroyPid();
 	std::clog << "Stopped sidewinderd." << std::endl;
 

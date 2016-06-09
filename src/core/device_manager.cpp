@@ -8,8 +8,6 @@
 #include <cstring>
 #include <iostream>
 
-#include <libudev.h>
-
 #include <core/device_manager.hpp>
 #include <vendor/logitech/g105.hpp>
 #include <vendor/logitech/g710.hpp>
@@ -17,27 +15,41 @@
 
 constexpr auto VENDOR_MICROSOFT =	"045e";
 constexpr auto VENDOR_LOGITECH =	"046d";
+constexpr auto TIMEOUT =		5000;
+constexpr auto NUM_POLL =		1;
 
-void DeviceManager::scan() {
+void DeviceManager::discover() {
 	for (auto it : devices_) {
 		struct Device device = it;
 		struct sidewinderd::DevNode devNode;
 
 		if (probe(&device, &devNode) > 0) {
+			// TODO use a unique identifier
+			auto it = connected_.find(device.product);
+
+			// skip this loop, if device is already connected
+			if (it != connected_.end()) {
+				std::cerr << "already in list" << std::endl;
+				continue;
+			}
+
 			switch (device.driver) {
 				case Device::Driver::LogitechG105: {
-					LogitechG105 keyboard(&device, &devNode, config_, process_);
-					keyboard.connect();
+					auto keyboard = new LogitechG105(&device, &devNode, config_, process_);
+					keyboard->connect();
+					connected_[device.product] = std::unique_ptr<Keyboard>(keyboard);
 					break;
 				}
 				case Device::Driver::LogitechG710: {
-					LogitechG710 keyboard(&device, &devNode, config_, process_);
-					keyboard.connect();
+					auto keyboard = new LogitechG710(&device, &devNode, config_, process_);
+					keyboard->connect();
+					connected_[device.product] = std::unique_ptr<Keyboard>(keyboard);
 					break;
 				}
 				case Device::Driver::SideWinder: {
-					SideWinder keyboard(&device, &devNode, config_, process_);
-					keyboard.connect();
+					auto keyboard = new SideWinder(&device, &devNode, config_, process_);
+					keyboard->connect();
+					connected_[device.product] = std::unique_ptr<Keyboard>(keyboard);
 					break;
 				}
 			}
@@ -45,29 +57,76 @@ void DeviceManager::scan() {
 	}
 }
 
-int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *devNode) {
-	struct udev *udev;
-	struct udev_device *dev;
-	struct udev_enumerate *enumerate;
-	struct udev_list_entry *devices, *devListEntry;
-	bool isFound = false;
-	udev = udev_new();
+int DeviceManager::monitor() {
+	// create udev object
+	udev_ = udev_new();
 
-	if (!udev) {
+	if (!udev_) {
 		std::cerr << "Can't create udev." << std::endl;
+
 		return -1;
 	}
 
-	enumerate = udev_enumerate_new(udev);
+	// set up monitor for /dev/hidraw and /dev/input/event*
+	monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
+	udev_monitor_filter_add_match_subsystem_devtype(monitor_, "hidraw", NULL);
+	udev_monitor_filter_add_match_subsystem_devtype(monitor_, "input", NULL);
+	udev_monitor_enable_receiving(monitor_);
+
+	// get file descriptor for the monitor, so we can use poll() on it
+	fd_ = udev_monitor_get_fd(monitor_);
+
+	// setup poll
+	pfd_.fd = fd_;
+	pfd_.events = POLLIN;
+
+	// initial discovery of new devices
+	discover();
+
+	struct udev_device *dev;
+
+	// run monitoring loop, until we receive a signal
+	while (process_->isActive()) {
+		poll(&pfd_, NUM_POLL, TIMEOUT);
+		dev = udev_monitor_receive_device(monitor_);
+
+		if (dev) {
+			std::string action(udev_device_get_action(dev));
+
+			if (action == "add") {
+				discover();
+			} else if (action == "remove") {
+				// check for disconnected devices
+				unbind();
+			}
+
+			udev_device_unref(dev);
+		}
+	}
+
+	udev_monitor_unref(monitor_);
+	udev_unref(udev_);
+
+	return 0;
+}
+
+int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *devNode) {
+	struct udev_device *dev;
+	struct udev_enumerate *enumerate;
+	struct udev_list_entry *devices, *entry;
+	bool isFound = false;
+
+	// create a list of devices in hidraw and input subsystems
+	enumerate = udev_enumerate_new(udev_);
 	udev_enumerate_add_match_subsystem(enumerate, "hidraw");
 	udev_enumerate_add_match_subsystem(enumerate, "input");
 	udev_enumerate_scan_devices(enumerate);
 	devices = udev_enumerate_get_list_entry(enumerate);
 
-	udev_list_entry_foreach(devListEntry, devices) {
+	udev_list_entry_foreach(entry, devices) {
 		const char *sysPath, *devNodePath;
-		sysPath = udev_list_entry_get_name(devListEntry);
-		dev = udev_device_new_from_syspath(udev, sysPath);
+		sysPath = udev_list_entry_get_name(entry);
+		dev = udev_device_new_from_syspath(udev_, sysPath);
 
 		if (std::string(udev_device_get_subsystem(dev)) == std::string("hidraw")) {
 			devNodePath = udev_device_get_devnode(dev);
@@ -109,9 +168,16 @@ int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *dev
 
 	/* free the enumerator object */
 	udev_enumerate_unref(enumerate);
-	udev_unref(udev);
 
 	return isFound;
+}
+
+void DeviceManager::unbind() {
+	for (auto &it : connected_) {
+		if (!it.second->isConnected()) {
+			connected_.erase(it.first);
+		}
+	}
 }
 
 DeviceManager::DeviceManager(libconfig::Config *config, Process *process) {
@@ -129,4 +195,14 @@ DeviceManager::DeviceManager(libconfig::Config *config, Process *process) {
 
 	config_ = config;
 	process_ = process;
+	udev_ = nullptr;
+	monitor_ = nullptr;
+}
+
+DeviceManager::~DeviceManager() {
+	unbind();
+
+	if (udev_) {
+		udev_unref(udev_);
+	}
 }
