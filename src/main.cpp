@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 		workdir = config.lookup("workdir").c_str();
 	}
 
-	if (process.createWorkdir(workdir)) {
+	if (process.createWorkdir(workdir, config.lookup("encrypted_workdir"))) {
 		return EXIT_FAILURE;
 	}
 

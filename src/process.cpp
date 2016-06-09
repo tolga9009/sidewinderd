@@ -5,8 +5,10 @@
  * MIT License. For more information, see LICENSE file.
  */
 
+#include <chrono>
 #include <csignal>
 #include <iostream>
+#include <thread>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -18,7 +20,8 @@
 #include "process.hpp"
 
 /* constants */
-constexpr auto version = "0.3.1";
+constexpr auto version =	"0.3.1";
+constexpr auto wait =		1;
 
 std::atomic<bool> Process::isActive_;
 
@@ -123,7 +126,7 @@ void Process::applyUser(std::string user) {
 	seteuid(pw_->pw_uid);
 }
 
-int Process::createWorkdir(std::string directory) {
+int Process::createWorkdir(std::string directory, bool isEncrypted) {
 	if (user_.empty()) {
 		return 1;
 	}
@@ -148,11 +151,18 @@ int Process::createWorkdir(std::string directory) {
 		workdir.append(xdgData);
 	}
 
+	// wait until encrypted drive becomes available
+	if (isEncrypted) {
+		while (access(workdir.c_str(), F_OK)) {
+			std::this_thread::sleep_for(std::chrono::seconds(wait));
+		}
+	}
+
 	workdir.append("/sidewinderd");
 	mkdir(workdir.c_str(), S_IRWXU);
 
 	if (chdir(workdir.c_str())) {
-		std::cerr << "Error accessing working directory." << std::endl;
+		std::cerr << "Error accessing " << workdir << "." << std::endl;
 
 		return -1;
 	}
