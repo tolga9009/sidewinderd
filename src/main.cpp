@@ -124,7 +124,10 @@ int main(int argc, char *argv[]) {
 		workdir = config.lookup("workdir").c_str();
 	}
 
-	process.createWorkdir(workdir);
+	if (process.createWorkdir(workdir)) {
+		return EXIT_FAILURE;
+	}
+
 	std::clog << "Started sidewinderd." << std::endl;
 	process.setActive(true);
 

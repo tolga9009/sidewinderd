@@ -123,9 +123,9 @@ void Process::applyUser(std::string user) {
 	seteuid(pw_->pw_uid);
 }
 
-void Process::createWorkdir(std::string directory) {
+int Process::createWorkdir(std::string directory) {
 	if (user_.empty()) {
-		return;
+		return 1;
 	}
 
 	/* creating sidewinderd directory in user's home directory */
@@ -153,7 +153,11 @@ void Process::createWorkdir(std::string directory) {
 
 	if (chdir(workdir.c_str())) {
 		std::cerr << "Error accessing working directory." << std::endl;
+
+		return -1;
 	}
+
+	return 0;
 }
 
 void Process::privilege() {
