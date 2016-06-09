@@ -15,7 +15,6 @@
 #include <process.hpp>
 #include <core/device_manager.hpp>
 
-/* TODO: remove exceptions for better portability */
 void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/sidewinderd.conf") {
 	try {
 		config->readFile(configFilePath.c_str());
@@ -38,6 +37,10 @@ void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/s
 	if (!root.exists("pid-file")) {
 		root.add("pid-file", libconfig::Setting::TypeString) = "/var/run/sidewinderd.pid";
 	}
+
+	if (!root.exists("encrypted_workdir")) {
+		root.add("encrypted_workdir", libconfig::Setting::TypeBoolean) = false;
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -57,7 +60,7 @@ int main(int argc, char *argv[]) {
 
 	int opt, index = 0;
 	std::string configFilePath;
-	std::string profileDirPath;
+	std::string workdir;
 
 	/* flags */
 	bool shouldDaemonize = false;
@@ -71,7 +74,7 @@ int main(int argc, char *argv[]) {
 				shouldDaemonize = true;
 				break;
 			case 'p':
-				profileDirPath = optarg;
+				workdir = optarg;
 				break;
 			case 'v':
 				std::cout << "sidewinderd version " << process.getVersion() << std::endl;
@@ -117,11 +120,11 @@ int main(int argc, char *argv[]) {
 	process.applyUser(config.lookup("user"));
 
 	/* creating sidewinderd directory in user's home directory */
-	if (config.exists("profile-path")) {
-		profileDirPath = config.lookup("profile-path").c_str();
+	if (config.exists("workdir")) {
+		workdir = config.lookup("workdir").c_str();
 	}
 
-	process.createWorkdir(profileDirPath);
+	process.createWorkdir(workdir);
 	std::clog << "Started sidewinderd." << std::endl;
 	process.setActive(true);
 
