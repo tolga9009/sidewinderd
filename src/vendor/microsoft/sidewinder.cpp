@@ -106,8 +106,11 @@ struct KeyData SideWinder::getInput() {
 			| (static_cast<int>(buf[3]) << 16)
 			| (static_cast<int>(buf[4]) << 24);
 		key = ffs(key);
-		keyData.index = key;
-		keyData.type = KeyData::KeyType::Macro;
+
+		if (key) {
+			keyData.index = key;
+			keyData.type = KeyData::KeyType::Macro;
+		}
 	} else if (nBytes == 8 && buf[0] == 1 && buf[6]) {
 		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
 		keyData.index = buf[6];

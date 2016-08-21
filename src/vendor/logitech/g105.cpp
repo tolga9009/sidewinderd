@@ -80,13 +80,19 @@ struct KeyData LogitechG105::getInput() {
 		if (buf[2] == 0) {
 			key = (static_cast<int>(buf[1]));
 			key = ffs(key);
-			keyData.index = key;
-			keyData.type = KeyData::KeyType::Macro;
+
+			if (key) {
+				keyData.index = key;
+				keyData.type = KeyData::KeyType::Macro;
+			}
 		} else if (buf[1] == 0) {
 			key = (static_cast<int>(buf[2]));
 			key = ffs(key);
-			keyData.index = key;
-			keyData.type = KeyData::KeyType::Extra;
+
+			if (key) {
+				keyData.index = key;
+				keyData.type = KeyData::KeyType::Extra;
+			}
 		}
 	}
 
