@@ -187,7 +187,11 @@ void Keyboard::handleRecordMode(Led *ledRecord, const int keyRecord) {
 	while (isRecordMode) {
 		struct KeyData keyData = pollDevice(1);
 
-		if (keyData.type == KeyData::KeyType::Macro) {
+		if (keyData.type == KeyData::KeyType::Unknown
+				|| !keyData.index) {
+			/* skip iteration if event is unknown or index is 0 */
+			continue;
+		} else if (keyData.type == KeyData::KeyType::Macro) {
 			/* record LED should blink */
 			ledRecord->blink();
 			isRecordMode = false;
