@@ -56,10 +56,10 @@ distribution, as package names might differ.
 
 ## Usage
 
-Start and enable Sidewinderd daemon:
+Enable and start Sidewinder daemon:
 
-    systemctl start sidewinderd.service
     systemctl enable sidewinderd.service
+    systemctl start sidewinderd.service
 
 Configure `/etc/sidewinderd.conf` according to your needs. Please change the
 user, as the default user is root.
