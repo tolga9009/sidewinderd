@@ -20,7 +20,7 @@
 #include "process.hpp"
 
 /* constants */
-constexpr auto version =	"0.3.1";
+constexpr auto version =	"0.4.0";
 constexpr auto wait =		1;
 
 std::atomic<bool> Process::isActive_;
