@@ -1,5 +1,5 @@
 [Unit]
-Description=Daemon for handling Microsoft SideWinder X4 / X6 and Logitech G710+
+Description=Support for Microsoft SideWinder X4 / X6 and Logitech G105 / G710+
 After=multi-user.target
 
 [Service]
