@@ -90,13 +90,18 @@ int DeviceManager::monitor() {
 		dev = udev_monitor_receive_device(monitor_);
 
 		if (dev) {
-			std::string action(udev_device_get_action(dev));
+			// filter out nullptr returns, else std::string() fails
+			auto ret = udev_device_get_action(dev);
 
-			if (action == "add") {
-				discover();
-			} else if (action == "remove") {
-				// check for disconnected devices
-				unbind();
+			if (ret) {
+				std::string action(ret);
+
+				if (action == "add") {
+					discover();
+				} else if (action == "remove") {
+					// check for disconnected devices
+					unbind();
+				}
 			}
 
 			udev_device_unref(dev);
@@ -126,8 +131,10 @@ int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *dev
 		const char *sysPath, *devNodePath;
 		sysPath = udev_list_entry_get_name(entry);
 		dev = udev_device_new_from_syspath(udev_, sysPath);
+		auto hidraw = udev_device_get_subsystem(dev);
 
-		if (std::string(udev_device_get_subsystem(dev)) == std::string("hidraw")) {
+		// evaluation from left to right; used to filter out nullptr
+		if (hidraw && std::string(hidraw) == std::string("hidraw")) {
 			devNodePath = udev_device_get_devnode(dev);
 			dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_interface");
 
@@ -135,26 +142,31 @@ int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *dev
 				std::cerr << "Unable to find parent device." << std::endl;
 			}
 
-			if (std::string(udev_device_get_sysattr_value(dev, "bInterfaceNumber")) == std::string("01")) {
-				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+			auto bInterfaceNumber = udev_device_get_sysattr_value(dev, "bInterfaceNumber");
 
-				if (std::string(udev_device_get_sysattr_value(dev, "idVendor")) == device->vendor) {
-					if (std::string(udev_device_get_sysattr_value(dev, "idProduct")) == device->product) {
+			if (bInterfaceNumber && std::string(bInterfaceNumber) == std::string("01")) {
+				dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+				auto idVendor = udev_device_get_sysattr_value(dev, "idVendor");
+				auto idProduct = udev_device_get_sysattr_value(dev, "idProduct");
+
+				if (idVendor && std::string(idVendor) == device->vendor
+					&& idProduct && std::string(idProduct) == device->product) {
 						devNode->hidraw = devNodePath;
-					}
 				}
 			}
 		}
 
+		auto input = udev_device_get_subsystem(dev);
+		auto product = udev_device_get_property_value(dev, "ID_MODEL_ID");
+		auto vendor = udev_device_get_property_value(dev, "ID_VENDOR_ID");
+		auto interface = udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM");
+
 		/* find correct /dev/input/event* file */
-		if (std::string(udev_device_get_subsystem(dev)) == std::string("input")
-			&& udev_device_get_property_value(dev, "ID_MODEL_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_MODEL_ID")) == device->product
-			&& udev_device_get_property_value(dev, "ID_VENDOR_ID") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_VENDOR_ID")) == device->vendor
-			&& udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM") != NULL
-			&& std::string(udev_device_get_property_value(dev, "ID_USB_INTERFACE_NUM")) == "00"
-			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD") != NULL
+		if (input && std::string(input) == std::string("input")
+			&& product && std::string(product) == device->product
+			&& vendor && std::string(vendor) == device->vendor
+			&& interface && std::string(interface) == "00"
+			&& udev_device_get_property_value(dev, "ID_INPUT_KEYBOARD")
 			&& strstr(sysPath, "event")
 			&& udev_device_get_parent_with_subsystem_devtype(dev, "usb", NULL)) {
 				devNode->inputEvent = udev_device_get_devnode(dev);
