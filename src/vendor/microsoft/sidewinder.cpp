@@ -24,6 +24,7 @@
 
 /* constants */
 constexpr auto SW_FEATURE_REPORT =	0x07;
+constexpr auto SW_MACRO_PAD =		0x01;
 constexpr auto SW_LED_AUTO =		0x02;
 constexpr auto SW_LED_P1 =		0x04;
 constexpr auto SW_LED_P2 =		0x08;
@@ -35,8 +36,10 @@ constexpr auto SW_KEY_RECORD =		0x11;
 constexpr auto SW_KEY_PROFILE =		0x14;
 
 void SideWinder::toggleMacroPad() {
-	macroPad_ ^= 1;
-	hid_.setReport(SW_FEATURE_REPORT, macroPad_);
+	auto report = hid_.getReport(SW_FEATURE_REPORT);
+	report ^= SW_MACRO_PAD;
+	macroPad_ = report & SW_MACRO_PAD;
+	hid_.setReport(SW_FEATURE_REPORT, report);
 }
 
 void SideWinder::switchProfile() {
@@ -153,6 +156,12 @@ SideWinder::SideWinder(struct Device *device,
 	ledRecord_.setLedType(LedType::Indicator);
 	ledRecord_.registerBlink(SW_LED_RECORD_BLINK);
 	ledAuto_.setLedType(LedType::Indicator);
+
+	// needed to avoid resetting macropad mode after bank switch
+	// TODO: use a better solution after Led handling has been rewritten
+	auto indicator= group_.getIndicatorMask();
+	indicator |= SW_MACRO_PAD;
+	group_.setIndicatorMask(indicator);
 
 	// set initial LED
 	ledProfile1_.on();
