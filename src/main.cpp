@@ -15,6 +15,16 @@
 #include <process.hpp>
 #include <core/device_manager.hpp>
 
+void help(std::string name) {
+	std::cerr << "Usage: " << name << " [options]" << std::endl
+		  << std::endl
+		  << "Options:" << std::endl
+		  << "  -c, --config=<file>   Override default configuration file path" << std::endl
+		  << "  -d, --daemon          Run process as daemon" << std::endl
+		  << "  -h, --help            Print this screen" << std::endl
+		  << "  -v, --version         Print program version" << std::endl;
+}
+
 void setupConfig(libconfig::Config *config, std::string configFilePath = "/etc/sidewinderd.conf") {
 	try {
 		config->readFile(configFilePath.c_str());
@@ -54,18 +64,18 @@ int main(int argc, char *argv[]) {
 	static struct option longOptions[] = {
 		{"config", required_argument, 0, 'c'},
 		{"daemon", no_argument, 0, 'd'},
+		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'v'},
 		{0, 0, 0, 0}
 	};
 
 	int opt, index = 0;
 	std::string configFilePath;
-	std::string workdir;
 
 	/* flags */
 	bool shouldDaemonize = false;
 
-	while ((opt = getopt_long(argc, argv, ":c:dp:v", longOptions, &index)) != -1) {
+	while ((opt = getopt_long(argc, argv, ":c:dhv", longOptions, &index)) != -1) {
 		switch (opt) {
 			case 'c':
 				configFilePath = optarg;
@@ -73,20 +83,20 @@ int main(int argc, char *argv[]) {
 			case 'd':
 				shouldDaemonize = true;
 				break;
-			case 'p':
-				workdir = optarg;
-				break;
+			case 'h':
+				help(process.getName());
+				return EXIT_SUCCESS;
 			case 'v':
-				std::cout << "sidewinderd version " << process.getVersion() << std::endl;
+				std::cerr << process.getName() << " " << process.getVersion() << std::endl;
 				return EXIT_SUCCESS;
 			case ':':
-				std::cout << "Missing argument." << std::endl;
-				break;
+				std::cerr << "Missing argument." << std::endl;
+				return EXIT_FAILURE;
 			case '?':
-				std::cout << "Unrecognized option." << std::endl;
-				break;
+				std::cerr << "Unknown option." << std::endl;
+				return EXIT_FAILURE;
 			default:
-				std::cout << "Unexpected error." << std::endl;
+				std::cerr << "Unexpected error." << std::endl;
 				return EXIT_FAILURE;
 		}
 	}
@@ -119,7 +129,9 @@ int main(int argc, char *argv[]) {
 	/* setting gid and uid to configured user */
 	process.applyUser(config.lookup("user"));
 
-	/* creating sidewinderd directory in user's home directory */
+	// setting up working directory
+	std::string workdir;
+
 	if (config.exists("workdir")) {
 		workdir = config.lookup("workdir").c_str();
 	}
