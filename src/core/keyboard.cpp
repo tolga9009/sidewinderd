@@ -11,6 +11,8 @@
 #include <sstream>
 #include <thread>
 
+#include <stdlib.h>
+
 #include <fcntl.h>
 #include <tinyxml2.h>
 #include <unistd.h>
@@ -46,6 +48,13 @@ void Keyboard::setupPoll() {
 	fds[1].events = POLLIN;
 }
 
+void Keyboard::runCommand(std::string command){
+	std::cout << "Running command '"<< command.c_str() << "'" << '\n';
+	if(command.length() > 0){
+		system(command.c_str());
+	}
+}
+
 /* TODO: interrupt and exit play_macro when any macro_key has been pressed */
 void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
 	tinyxml2::XMLDocument xmlDoc;
@@ -60,7 +69,8 @@ void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
 				int key = std::atoi(child->GetText());
 				child->QueryBoolAttribute("Down", &isPressed);
 				virtInput->sendEvent(EV_KEY, key, isPressed);
-			} else if (child->Name() == std::string("DelayEvent")) {
+			}
+			else if (child->Name() == std::string("DelayEvent")) {
 				int delay = std::atoi(child->GetText());
 				struct timespec request, remain;
 				/*
@@ -73,9 +83,16 @@ void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
 				request.tv_nsec = 1000000L * delay;
 				nanosleep(&request, &remain);
 			}
+			else if (child->Name() == std::string("RunCommand")) {
+				std::string command(child->GetText());
+				std::thread thread(runCommand, command);
+				thread.detach();
+			}
 		}
 	}
 }
+
+
 
 /*
  * Macro recording captures delays by default. Use the configuration to disable

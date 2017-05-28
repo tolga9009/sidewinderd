@@ -56,6 +56,9 @@ class Keyboard {
 		struct KeyData pollDevice(nfds_t nfds);
 		virtual void handleKey(struct KeyData *keyData) = 0;
 		void handleRecordMode(Led *ledRecord, const int keyRecord);
+
+	private:
+		static void runCommand(std::string command);
 };
 
 #endif
