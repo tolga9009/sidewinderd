@@ -88,6 +88,61 @@ macro.
 6. You've now created a macro. Use it by setting the chosen profile and pressing
 the chosen macro key.
 
+## Advanced macros
+
+You can manually edit a macro by editing its associated XML file, located in
+Sidewinderd's working directory. If you have not set one in the config, it will be
+located at `/home_dir_of_user/.local/share/sidewinderd`, where `home_dir_of_user` is the
+home directory of the user you have set in Sidewinderd's config. By default, this user
+is `root`, but it is recommended to change this. The macro files are then located at `profile_#/s#.xml` where `profile_#` is the profile/bank number (e.g. if your keyboard has M1-3 keys, then the M1 set of macros would be located under `profile_1`) and `s#.xml` is the macro number (e.g. if your keyboard has macro keys G1-6 then the macro for G1 would be located at `s1.xml`).
+
+Macro XML files consist of a document root `<Macro>`, the contents of which are a list of 
+elements, representing actions for Sidewinderd to execute when the key is pressed.
+Sidewinderd currently supports the following actions:
+1. `<KeyBoardEvent Down="1|0">key</KeyBoardEvent>` - emits a virtual keyboard event, where the value of attribute `Down` is either 1 for a key press event or 0 for a key release event and `key` is the [key code](https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h) of the desired key
+2. `<DelayEvent>msec</DelayEvent>` - Delays for a time, where `msec` is the number of milliseconds to delay
+3. `<RunCommand>command</RunCommand>` - Runs a command in the shell, where `command` is the command to run. Supports `sudo` if Sidewinderd was originally run with `sudo`.
+
+### Examples
+This macro will type the letters "asdf" with the same delay between keypresses as when they were typed during recording.
+```
+<Macro>
+    <KeyBoardEvent Down="1">30</KeyBoardEvent>
+    <DelayEvent>112</DelayEvent>
+    <KeyBoardEvent Down="1">31</KeyBoardEvent>
+    <DelayEvent>39</DelayEvent>
+    <KeyBoardEvent Down="0">30</KeyBoardEvent>
+    <DelayEvent>31</DelayEvent>
+    <KeyBoardEvent Down="1">32</KeyBoardEvent>
+    <DelayEvent>80</DelayEvent>
+    <KeyBoardEvent Down="0">31</KeyBoardEvent>
+    <DelayEvent>7</DelayEvent>
+    <KeyBoardEvent Down="1">33</KeyBoardEvent>
+    <DelayEvent>40</DelayEvent>
+    <KeyBoardEvent Down="0">32</KeyBoardEvent>
+    <DelayEvent>39</DelayEvent>
+    <KeyBoardEvent Down="0">33</KeyBoardEvent>
+</Macro>
+```
+This macro will type the letters "asdf" instantly, with no delay between keypresses.
+```
+<Macro>
+    <KeyBoardEvent Down="1">30</KeyBoardEvent>
+    <KeyBoardEvent Down="1">31</KeyBoardEvent>
+    <KeyBoardEvent Down="0">30</KeyBoardEvent>
+    <KeyBoardEvent Down="1">32</KeyBoardEvent>
+    <KeyBoardEvent Down="0">31</KeyBoardEvent>
+    <KeyBoardEvent Down="1">33</KeyBoardEvent>
+    <KeyBoardEvent Down="0">32</KeyBoardEvent>
+    <KeyBoardEvent Down="0">33</KeyBoardEvent>
+</Macro>
+```
+This macro will run the command `xscreensaver-command --lock`, to lock the screen on systems running [xscreensaver](https://www.jwz.org/xscreensaver/).
+```
+<Macro>
+    <RunCommand>xscreensaver-command --lock</RunCommand>
+</Macro>
+```
 
 ## Contribution
 
