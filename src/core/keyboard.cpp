@@ -83,6 +83,14 @@ void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
 				request.tv_nsec = 1000000L * delay;
 				nanosleep(&request, &remain);
 			}
+			else if (child->Name() == std::string("MouseEvent")) {
+				int rel = REL_X;
+				int val = std::atoi(child->GetText());
+				if (child->Attribute("Direction") != NULL && child->Attribute("Direction") == std::string("Y")){
+					rel = REL_Y;
+				}
+				virtInput->sendEvent(EV_REL,rel,val);
+			}
 			else if (child->Name() == std::string("RunCommand")) {
 				std::string command(child->GetText());
 				std::thread thread(runCommand, command);
