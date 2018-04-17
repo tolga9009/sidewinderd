@@ -103,8 +103,9 @@ Sidewinderd currently supports the following actions:
 2. `<DelayEvent>msec</DelayEvent>` - Delays for a time, where `msec` is the number of milliseconds to delay
 3. `<RunCommand>command</RunCommand>` - Runs a command in the shell, where `command` is the command to run. Supports `sudo` if Sidewinderd was originally run with `sudo`.
 
-You can also enter mouse movements:
+You can also enter mouse movements and mouse click (right/left only for now):
 `<MouseEvent Direction="Y">20</MouseEvent>` will move the mouse for 20 pixels on the Y axis 
+`<MouseEvent Click="Right"></MouseEvent>` will do a right mouse click
 
 ### Examples
 This macro will type the letters "asdf" with the same delay between keypresses as when they were typed during recording.
