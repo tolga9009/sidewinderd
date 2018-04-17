@@ -84,12 +84,28 @@ void Keyboard::playMacro(std::string macroPath, VirtualInput *virtInput) {
 				nanosleep(&request, &remain);
 			}
 			else if (child->Name() == std::string("MouseEvent")) {
-				int rel = REL_X;
-				int val = std::atoi(child->GetText());
-				if (child->Attribute("Direction") != NULL && child->Attribute("Direction") == std::string("Y")){
-					rel = REL_Y;
+				int type = EV_REL;
+				int stype = REL_X;
+				int value = 0;
+				if (child->GetText() != NULL) {
+					value = std::atoi(child->GetText());
 				}
-				virtInput->sendEvent(EV_REL,rel,val);
+
+				if (child->Attribute("Direction") != NULL && child->Attribute("Direction") == std::string("Y")){
+					stype = REL_Y;
+				}
+				if (child->Attribute("Click") != NULL){
+					type = EV_KEY;
+					stype = BTN_LEFT;
+					if (child->Attribute("Click") == std::string("Right")){
+						stype = BTN_RIGHT;
+					}
+					// Click down then Click up
+					virtInput->sendEvent(type,stype,1);
+					virtInput->sendEvent(type,stype,0);
+				}else{
+					virtInput->sendEvent(type,stype,value);
+				}
 			}
 			else if (child->Name() == std::string("RunCommand")) {
 				std::string command(child->GetText());
