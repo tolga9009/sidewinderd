@@ -100,10 +100,10 @@ Macro XML files consist of a document root `<Macro>`, the contents of which are 
 elements, representing actions for Sidewinderd to execute when the key is pressed.
 Sidewinderd currently supports the following actions:
 1. `<KeyBoardEvent Down="1|0">key</KeyBoardEvent>` - emits a virtual keyboard event, where the value of attribute `Down` is either 1 for a key press event or 0 for a key release event and `key` is the [key code](https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h) of the desired key
-2. a. `<MouseEvent Direction="X|Y">pixels</MouseEvent>` - Moves the mouse in X or Y axis for the number of pixels required, which can be a negative value.
-2. b. `<MouseEvent Click="Right|Left"></MouseEvent>` - Sends a mouse click on the Right or Left mouse button
-3. `<DelayEvent>msec</DelayEvent>` - Delays for a time, where `msec` is the number of milliseconds to delay
-4. `<RunCommand>command</RunCommand>` - Runs a command in the shell, where `command` is the command to run. Supports `sudo` if Sidewinderd was originally run with `sudo`.
+2. `<MouseEvent Direction="X|Y">pixels</MouseEvent>` - Moves the mouse in X or Y axis for the number of pixels required, which can be a negative value.
+3. `<MouseEvent Click="Right|Left"></MouseEvent>` - Sends a mouse click on the Right or Left mouse button
+4. `<DelayEvent>msec</DelayEvent>` - Delays for a time, where `msec` is the number of milliseconds to delay
+5. `<RunCommand>command</RunCommand>` - Runs a command in the shell, where `command` is the command to run. Supports `sudo` if Sidewinderd was originally run with `sudo`.
 
 ### Examples
 This macro will type the letters "asdf" with the same delay between keypresses as when they were typed during recording.
