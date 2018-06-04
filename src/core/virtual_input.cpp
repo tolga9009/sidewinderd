@@ -71,6 +71,12 @@ void VirtualInput::createUidev() {
 	process_->unprivilege();
 	/* set all keybits */
 	ioctl(uifd_, UI_SET_EVBIT, EV_KEY);
+	ioctl(uifd_, UI_SET_KEYBIT, BTN_LEFT);
+	ioctl(uifd_, UI_SET_KEYBIT, BTN_RIGHT);
+
+	ioctl(uifd_, UI_SET_EVBIT, EV_REL);
+	ioctl(uifd_, UI_SET_RELBIT, REL_X);
+	ioctl(uifd_, UI_SET_RELBIT, REL_Y);
 
 	for (int i = KEY_ESC; i <= KEY_KPDOT; i++) {
 		ioctl(uifd_, UI_SET_KEYBIT, i);
