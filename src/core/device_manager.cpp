@@ -9,6 +9,7 @@
 #include <iostream>
 
 #include <core/device_manager.hpp>
+#include <vendor/logitech/g103.hpp>
 #include <vendor/logitech/g105.hpp>
 #include <vendor/logitech/g710.hpp>
 #include <vendor/microsoft/sidewinder.hpp>
@@ -33,6 +34,12 @@ void DeviceManager::discover() {
 			}
 
 			switch (device.driver) {
+				case Device::Driver::LogitechG103: {
+					auto keyboard = new LogitechG103(&device, &devNode, config_, process_);
+					keyboard->connect();
+					connected_[device.product] = std::unique_ptr<Keyboard>(keyboard);
+					break;
+				}
 				case Device::Driver::LogitechG105: {
 					auto keyboard = new LogitechG105(&device, &devNode, config_, process_);
 					keyboard->connect();
@@ -200,6 +207,8 @@ DeviceManager::DeviceManager(libconfig::Config *config, Process *process) {
 			Device::Driver::SideWinder},
 		{VENDOR_LOGITECH, "c248", "Logitech G105",
 			Device::Driver::LogitechG105},
+		{VENDOR_LOGITECH, "c24b", "Logitech G103",
+			Device::Driver::LogitechG103},
 		{VENDOR_LOGITECH, "c24d", "Logitech G710+",
 			Device::Driver::LogitechG710}
 	};

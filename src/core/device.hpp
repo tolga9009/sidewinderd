@@ -16,6 +16,7 @@ struct Device {
 		std::string name;
 
 		enum class Driver {
+			LogitechG103,
 			LogitechG105,
 			LogitechG710,
 			SideWinder

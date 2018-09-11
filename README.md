@@ -10,6 +10,7 @@ for rapid driver development under Linux.
 
   * Microsoft SideWinder X4
   * Microsoft SideWinder X6
+  * Logitech G103
   * Logitech G105
   * Logitech G710
   * Logitech G710+
