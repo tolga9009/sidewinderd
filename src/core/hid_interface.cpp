@@ -5,6 +5,8 @@
  * MIT License. For more information, see LICENSE file.
  */
 
+#include <unistd.h>
+
 #include <iostream>
 
 #include <linux/hidraw.h>
@@ -40,6 +42,13 @@ void HidInterface::setReport(unsigned char report, unsigned char value) {
 
 	if (ret < 0) {
 		std::cerr << "Error setting HID feature report." << std::endl;
+	}
+}
+
+void HidInterface::writeData(unsigned char *buf, unsigned int size) {
+	int ret = write(*fd_, buf, size);
+	if (ret < 0) {
+		std::cerr << "Error writing to HID." << std::endl;
 	}
 }
 

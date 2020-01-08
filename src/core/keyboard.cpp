@@ -107,7 +107,7 @@ void Keyboard::recordMacro(std::string path, Led *ledRecord, const int keyRecord
 	while (isRecordMode) {
 		keyData = pollDevice(2);
 
-		if (keyData.index == keyRecord && keyData.type == KeyData::KeyType::Extra) {
+		if (keyData.index == keyRecord && keyData.type == KeyData::KeyType::Record) {
 			ledRecord->off();
 			isRecordMode = false;
 		}
@@ -187,8 +187,7 @@ void Keyboard::handleRecordMode(Led *ledRecord, const int keyRecord) {
 	while (isRecordMode) {
 		struct KeyData keyData = pollDevice(1);
 
-		if (keyData.type == KeyData::KeyType::Unknown
-				|| !keyData.index) {
+		if (keyData.type == KeyData::KeyType::Unknown || !keyData.index) {
 			/* skip iteration if event is unknown or index is 0 */
 			continue;
 		} else if (keyData.type == KeyData::KeyType::Macro) {
@@ -197,14 +196,15 @@ void Keyboard::handleRecordMode(Led *ledRecord, const int keyRecord) {
 			isRecordMode = false;
 			Key key(&keyData);
 			recordMacro(key.getMacroPath(profile_), ledRecord, keyRecord);
+		} else if (keyData.type == KeyData::KeyType::Record) {
+			/* deactivate Record LED */
+			ledRecord->off();
+			isRecordMode = false;
 		} else if (keyData.type == KeyData::KeyType::Extra) {
 			/* deactivate Record LED */
 			ledRecord->off();
 			isRecordMode = false;
-
-			if (keyData.index != keyRecord) {
-				handleKey(&keyData);
-			}
+			handleKey(&keyData);
 		}
 	}
 }

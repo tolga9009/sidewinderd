@@ -14,6 +14,7 @@ class HidInterface {
 	public:
 		unsigned char getReport(unsigned char report);
 		void setReport(unsigned char report, unsigned char value);
+		void writeData(unsigned char *buf, unsigned int size);
 		HidInterface(int *fd);
 
 	private:

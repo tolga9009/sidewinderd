@@ -29,7 +29,8 @@ struct KeyData {
 	enum class KeyType {
 		Unknown,
 		Macro,
-		Extra
+		Extra,
+		Record
 	} type;
 };
 

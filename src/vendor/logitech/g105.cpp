@@ -89,7 +89,10 @@ struct KeyData LogitechG105::getInput() {
 			key = (static_cast<int>(buf[2]));
 			key = ffs(key);
 
-			if (key) {
+			if (key == G105_KEY_MR) {
+				keyData.index = key;
+				keyData.type = KeyData::KeyType::Record;
+			} else if (key) {
 				keyData.index = key;
 				keyData.type = KeyData::KeyType::Extra;
 			}
@@ -116,7 +119,9 @@ void LogitechG105::handleKey(struct KeyData *keyData) {
 			} else if (keyData->index == G105_KEY_M3) {
 				/* M3 key */
 				setProfile(2);
-			} else if (keyData->index == G105_KEY_MR) {
+			}
+		} else if (keyData->type == KeyData::KeyType::Record) {
+			if (keyData->index == G105_KEY_MR) {
 				/* MR key */
 				handleRecordMode(&ledRecord_, G105_KEY_MR);
 			}

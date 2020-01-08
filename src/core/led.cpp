@@ -9,26 +9,36 @@
 #include <core/led.hpp>
 
 void Led::on() {
-	auto report = hid_->getReport(report_);
-	auto buf = report;
+	if (reportWrite_) {
+		reportWrite_[reportLedPos_] = led_;
+		hid_->writeData(reportWrite_, reportWriteSize_);
+	} else if (report_) {
+		auto report = hid_->getReport(report_);
+		auto buf = report;
 
-	if (type_ == LedType::Profile) {
-		// clear out all LEDs, but Indicator LEDs
-		buf &= group_->getIndicatorMask();
-	}
+		if (type_ == LedType::Profile) {
+			// clear out all LEDs, but Indicator LEDs
+			buf &= group_->getIndicatorMask();
+		}
 
-	buf |= led_;
+		buf |= led_;
 
-	// don't call, if there are no changes
-	if (buf != report) {
-		hid_->setReport(report_, buf);
+		// don't call, if there are no changes
+		if (buf != report) {
+			hid_->setReport(report_, buf);
+		}
 	}
 }
 
 void Led::off() {
-	auto buf = hid_->getReport(report_);
-	buf &= ~led_;
-	hid_->setReport(report_, buf);
+	if (reportWrite_) {
+		reportWrite_[reportLedPos_] = 0x00;
+		hid_->writeData(reportWrite_, reportWriteSize_);
+	} else if (report_) {
+		auto buf = hid_->getReport(report_);
+		buf &= ~led_;
+		hid_->setReport(report_, buf);
+	}
 }
 
 void Led::blink() {
@@ -37,6 +47,8 @@ void Led::blink() {
 		buf &= ~led_;
 		buf |= blink_;
 		hid_->setReport(report_, buf);
+	} else if (blinkWrite_) {
+		hid_->writeData(blinkWrite_, blinkWriteSize_);
 	} else {
 		/*
 		 * TODO Implement non-blocking software emulated blink, using
@@ -55,11 +67,21 @@ void Led::registerBlink(unsigned char led) {
 	blink_ = led;
 }
 
+void Led::registerBlinkWrite(unsigned char *buf) {
+	blinkWrite_ = buf;
+}
+
+void Led::registerReportWrite(unsigned char *buf, unsigned int pos, unsigned int size) {
+	reportWrite_ = buf;
+	reportLedPos_ = pos;
+	reportWriteSize_ = size;
+}
+
 void Led::setLedType(LedType type) {
 	type_ = type;
 
 	if (type_ == LedType::Indicator) {
-		auto indicator= group_->getIndicatorMask();
+		auto indicator = group_->getIndicatorMask();
 		indicator |= led_;
 		group_->setIndicatorMask(indicator);
 	}
@@ -67,9 +89,14 @@ void Led::setLedType(LedType type) {
 
 Led::Led(unsigned char report, unsigned char led, LedGroup *group) {
 	report_ = report;
+	reportWrite_ = {};
+	reportWriteSize_ = 0;
+	reportLedPos_ = 0;
 	led_ = led;
 	group_ = group;
 	blink_ = 0;
+	blinkWrite_ = {};
+	blinkWriteSize_ = 0;
 	type_ = LedType::Common;
 	hid_ = group_->getHidInterface();
 

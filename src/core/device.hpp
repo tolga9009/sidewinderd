@@ -18,6 +18,7 @@ struct Device {
 		enum class Driver {
 			LogitechG105,
 			LogitechG710,
+			LogitechG815,
 			SideWinder
 		} driver;
 };

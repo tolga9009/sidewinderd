@@ -116,8 +116,13 @@ struct KeyData SideWinder::getInput() {
 		}
 	} else if (nBytes == 8 && buf[0] == 1 && buf[6]) {
 		/* buf[0] == 1 means media keys, buf[6] shows pressed key */
-		keyData.index = buf[6];
-		keyData.type = KeyData::KeyType::Extra;
+		if (buf[6] == SW_KEY_RECORD) {
+			keyData.index = buf[6];
+			keyData.type = KeyData::KeyType::Record;
+		} else {
+			keyData.index = buf[6];
+			keyData.type = KeyData::KeyType::Extra;
+		}
 	}
 
 	return keyData;
@@ -132,10 +137,12 @@ void SideWinder::handleKey(struct KeyData *keyData) {
 	} else if (keyData->type == KeyData::KeyType::Extra) {
 		if (keyData->index == SW_KEY_GAMECENTER) {
 			toggleMacroPad();
-		} else if (keyData->index == SW_KEY_RECORD) {
-			handleRecordMode(&ledRecord_, SW_KEY_RECORD);
 		} else if (keyData->index == SW_KEY_PROFILE) {
 			switchProfile();
+		}
+	} else if (keyData->type == KeyData::KeyType::Record) {
+		if (keyData->index == SW_KEY_RECORD) {
+			handleRecordMode(&ledRecord_, SW_KEY_RECORD);
 		}
 	}
 }

@@ -11,6 +11,7 @@
 #include <core/device_manager.hpp>
 #include <vendor/logitech/g105.hpp>
 #include <vendor/logitech/g710.hpp>
+#include <vendor/logitech/g815.hpp>
 #include <vendor/microsoft/sidewinder.hpp>
 
 constexpr auto VENDOR_MICROSOFT =	"045e";
@@ -41,6 +42,12 @@ void DeviceManager::discover() {
 				}
 				case Device::Driver::LogitechG710: {
 					auto keyboard = new LogitechG710(&device, &devNode, config_, process_);
+					keyboard->connect();
+					connected_[device.product] = std::unique_ptr<Keyboard>(keyboard);
+					break;
+				}
+				case Device::Driver::LogitechG815: {
+					auto keyboard = new LogitechG815(&device, &devNode, config_, process_);
 					keyboard->connect();
 					connected_[device.product] = std::unique_ptr<Keyboard>(keyboard);
 					break;
@@ -201,7 +208,9 @@ DeviceManager::DeviceManager(libconfig::Config *config, Process *process) {
 		{VENDOR_LOGITECH, "c248", "Logitech G105",
 			Device::Driver::LogitechG105},
 		{VENDOR_LOGITECH, "c24d", "Logitech G710+",
-			Device::Driver::LogitechG710}
+			Device::Driver::LogitechG710},
+		{VENDOR_LOGITECH, "c33f", "Logitech G815",
+			Device::Driver::LogitechG815}
 	};
 
 	config_ = config;
