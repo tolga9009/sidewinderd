@@ -191,9 +191,11 @@ int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *dev
 }
 
 void DeviceManager::unbind() {
-	for (auto &it : connected_) {
-		if (!it.second->isConnected()) {
-			connected_.erase(it.first);
+	for (auto it = connected_.cbegin(); it != connected_.cend();) {
+		if (it->second->isConnected()) {
+			++it;
+		} else {
+			it = connected_.erase(it);
 		}
 	}
 }
