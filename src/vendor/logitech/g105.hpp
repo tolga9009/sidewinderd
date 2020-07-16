@@ -14,6 +14,7 @@
 class LogitechG105 : public Keyboard {
 	public:
 		LogitechG105(struct Device *device, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
+		~LogitechG105();
 
 	protected:
 		struct KeyData getInput();

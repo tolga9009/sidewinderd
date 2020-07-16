@@ -100,3 +100,12 @@ LogitechG103::LogitechG103(struct Device *device,
 	// set profile to default, as no profile switching is supported
 	setProfile(0);
 }
+
+LogitechG103::~LogitechG103() {
+	std::cerr << "LogitechG103 Destructor" << std::endl;
+
+	// keyboard is not connected anymore, join the thread
+	if (listenThread_.joinable()) {
+		listenThread_.join();
+	}
+}

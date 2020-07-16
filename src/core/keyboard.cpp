@@ -244,10 +244,6 @@ Keyboard::Keyboard(struct Device *device,
 Keyboard::~Keyboard() {
 	std::cerr << "Keyboard Destructor" << std::endl;
 
-	if (listenThread_.joinable()) {
-		listenThread_.join();
-	}
-
 	delete virtInput_;
 	close(fd_);
 }

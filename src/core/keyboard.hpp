@@ -35,7 +35,7 @@ class Keyboard {
 		void disconnect();
 		void listen();
 		Keyboard(struct Device *device, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
-		~Keyboard();
+		virtual ~Keyboard();
 
 	protected:
 		bool isConnected_;

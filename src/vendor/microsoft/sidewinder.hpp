@@ -14,6 +14,7 @@
 class SideWinder : public Keyboard {
 	public:
 		SideWinder(struct Device *device, sidewinderd::DevNode *devNode, libconfig::Config *config, Process *process);
+		~SideWinder();
 
 	protected:
 		struct KeyData getInput();

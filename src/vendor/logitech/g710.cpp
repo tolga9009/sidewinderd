@@ -150,3 +150,12 @@ LogitechG710::LogitechG710(struct Device *device,
 	// set initial LED
 	ledProfile1_.on();
 }
+
+LogitechG710::~LogitechG710() {
+	std::cerr << "LogitechG710 Destructor" << std::endl;
+
+	// keyboard is not connected anymore, join the thread
+	if (listenThread_.joinable()) {
+		listenThread_.join();
+	}
+}
