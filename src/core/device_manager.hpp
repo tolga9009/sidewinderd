@@ -39,7 +39,7 @@ class DeviceManager {
 		Process *process_;
 		void discover();
 		int probe(struct Device *device, struct sidewinderd::DevNode *devNode);
-		void unbind();
+		void unbind(std::string product);
 };
 
 #endif

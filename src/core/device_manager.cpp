@@ -107,7 +107,11 @@ int DeviceManager::monitor() {
 					discover();
 				} else if (action == "remove") {
 					// check for disconnected devices
-					unbind();
+					auto product = udev_device_get_property_value(dev, "ID_MODEL_ID");
+
+					if (product) {
+						unbind(product);
+					}
 				}
 			}
 
@@ -190,11 +194,11 @@ int DeviceManager::probe(struct Device *device, struct sidewinderd::DevNode *dev
 	return isFound;
 }
 
-void DeviceManager::unbind() {
-	for (auto &it : connected_) {
-		if (!it.second->isConnected()) {
-			connected_.erase(it.first);
-		}
+void DeviceManager::unbind(std::string product) {
+	auto it = connected_.find(product);
+
+	if (it != connected_.end() && it->second->isConnected()) {
+		connected_.erase(product);
 	}
 }
 
@@ -220,7 +224,8 @@ DeviceManager::DeviceManager(libconfig::Config *config, Process *process) {
 }
 
 DeviceManager::~DeviceManager() {
-	unbind();
+	// remove all connected devices
+	connected_.clear();
 
 	if (udev_) {
 		udev_unref(udev_);
