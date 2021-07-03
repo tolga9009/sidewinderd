@@ -119,11 +119,20 @@ void Process::destroyPid() {
 	}
 }
 
-void Process::applyUser(std::string user) {
+int Process::applyUser(std::string user) {
 	user_ = user;
 	pw_ = getpwnam(user_.c_str());
-	setegid(pw_->pw_gid);
-	seteuid(pw_->pw_uid);
+
+	if (pw_) {
+		setegid(pw_->pw_gid);
+		seteuid(pw_->pw_uid);
+	} else {
+		std::cerr << "User not found." << std::endl;
+
+		return -1;
+	}
+
+	return 0;
 }
 
 int Process::createWorkdir(std::string directory, bool isEncrypted) {

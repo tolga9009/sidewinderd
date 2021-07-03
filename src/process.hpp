@@ -22,7 +22,7 @@ class Process {
 		int daemonize();
 		int createPid(std::string pidPath);
 		void destroyPid();
-		void applyUser(std::string user);
+		int applyUser(std::string user);
 		int createWorkdir(std::string directory, bool isEncrypted);
 		void privilege();
 		void unprivilege();

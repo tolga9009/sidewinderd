@@ -127,7 +127,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* setting gid and uid to configured user */
-	process.applyUser(config.lookup("user"));
+	if (process.applyUser(config.lookup("user"))) {
+		return EXIT_FAILURE;
+	}
 
 	// setting up working directory
 	std::string workdir;
