@@ -140,24 +140,26 @@ int Process::createWorkdir(std::string directory, bool isEncrypted) {
 		return 1;
 	}
 
-	/* creating sidewinderd directory in user's home directory */
-	std::string workdir = pw_->pw_dir;
+	std::string workdir;
 
-	if (!directory.empty()) {
-		workdir = directory;
-	}
+	if (directory.empty()) {
+		std::string xdgData;
+		workdir = pw_->pw_dir;
 
-	std::string xdgData;
+		// find user-specific data directory
+		if (const char *env = std::getenv("XDG_DATA_HOME")) {
+			xdgData = env;
 
-	if (const char *env = std::getenv("XDG_DATA_HOME")) {
-		xdgData = env;
-
-		if (!xdgData.empty()) {
-			workdir = xdgData;
+			if (!xdgData.empty()) {
+				workdir = xdgData;
+			}
+		} else {
+			// fallback to default
+			xdgData = "/.local/share";
+			workdir.append(xdgData);
 		}
 	} else {
-		xdgData = "/.local/share";
-		workdir.append(xdgData);
+		workdir = directory;
 	}
 
 	// wait until encrypted drive becomes available
@@ -167,8 +169,11 @@ int Process::createWorkdir(std::string directory, bool isEncrypted) {
 		}
 	}
 
-	workdir.append("/sidewinderd");
-	mkdir(workdir.c_str(), S_IRWXU);
+	// creating sidewinderd directory
+	if (directory.empty()) {
+		workdir.append("/sidewinderd");
+		mkdir(workdir.c_str(), S_IRWXU);
+	}
 
 	if (chdir(workdir.c_str())) {
 		std::cerr << "Error accessing " << workdir << "." << std::endl;
