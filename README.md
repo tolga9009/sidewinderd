@@ -34,6 +34,8 @@ distribution, as package names might differ.
   * tinyxml2 2.2.0
   * libudev 210
 
+  For Ubuntu you can use the following package names(tested with 23.04): `cmake libconfig++-dev libtinyxml2-dev libudev-dev`
+
 2. Create a build directory in the toplevel directory:
 
     ```
